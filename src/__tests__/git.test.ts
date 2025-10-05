@@ -267,7 +267,7 @@ describe('GitService', () => {
       );
     });
 
-    it('should handle individual file diff failures gracefully', async () => {
+    it('should throw error when individual file diff fails', async () => {
       const mockDiffSummary = {
         changed: 1,
         insertions: 5,
@@ -286,10 +286,7 @@ describe('GitService', () => {
       mockGit.diffSummary.mockResolvedValue(mockDiffSummary as any);
       mockGit.diff.mockRejectedValue(new Error('Individual file diff failed'));
 
-      const result = await gitService.getChanges('main', true);
-
-      expect(result.files[0].diffContent).toBeUndefined();
-      expect(result.files[0].lineNumbers).toBeUndefined();
+      await expect(gitService.getChanges('main', true)).rejects.toThrow('Individual file diff failed');
     });
 
     it('should handle files without insertions property', async () => {

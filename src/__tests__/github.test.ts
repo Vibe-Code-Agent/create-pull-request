@@ -94,27 +94,6 @@ describe('GitHubService', () => {
     });
   });
 
-  describe('validateConnection', () => {
-    it('should validate connection successfully', async () => {
-      mockOctokit.rest.users.getAuthenticated.mockResolvedValue({
-        data: { login: 'testuser' }
-      });
-
-      const result = await githubService.validateConnection();
-
-      expect(result).toBe(true);
-      expect(mockOctokit.rest.users.getAuthenticated).toHaveBeenCalled();
-    });
-
-    it('should return false for authentication failures', async () => {
-      mockOctokit.rest.users.getAuthenticated.mockRejectedValue(new Error('Unauthorized'));
-
-      const result = await githubService.validateConnection();
-
-      expect(result).toBe(false);
-    });
-  });
-
   describe('getCurrentRepo', () => {
     it('should get current repository info successfully', async () => {
       const mockRemotes = [

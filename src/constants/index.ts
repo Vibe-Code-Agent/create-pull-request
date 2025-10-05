@@ -5,12 +5,30 @@ import * as path from 'node:path';
 // Function to get version from package.json
 function getPackageVersion(): string {
   try {
-    const packageJsonPath = path.join(__dirname, '../../package.json');
-    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-    return packageJson.version || '1.0.0';
-  } catch (_error) {
-    // Fallback version if package.json can't be read
-    return '1.0.0';
+    // Use process.cwd() as it works in both production and test environments
+    const packageJsonPath = path.join(process.cwd(), 'package.json');
+    const packageJsonContent = fs.readFileSync(packageJsonPath, 'utf8');
+
+    if (!packageJsonContent) {
+      throw new Error('package.json file is empty or could not be read');
+    }
+
+    const packageJson = JSON.parse(packageJsonContent);
+
+    if (!packageJson.version) {
+      throw new Error('version field not found in package.json');
+    }
+
+    return packageJson.version;
+  } catch (error) {
+    // In production, we should fail fast rather than use a wrong version
+    // But in test environments, we provide a fallback to allow tests to run
+    if (process.env.NODE_ENV === 'test') {
+      return '1.0.0';
+    }
+
+    // Re-throw the error in production to fail fast
+    throw new Error(`Failed to read package version: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 

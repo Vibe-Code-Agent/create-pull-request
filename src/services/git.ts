@@ -57,13 +57,9 @@ export class GitService {
         };
 
         if (includeDetailedDiff) {
-          try {
-            const fileDiff = await this.git.diff([`${baseBranch}...HEAD`, '--', file.file]);
-            baseFileChange.diffContent = fileDiff;
-            baseFileChange.lineNumbers = this.extractLineNumbers(fileDiff);
-          } catch (_error) {
-            // If we can't get diff for a specific file, continue without it
-          }
+          const fileDiff = await this.git.diff([`${baseBranch}...HEAD`, '--', file.file]);
+          baseFileChange.diffContent = fileDiff;
+          baseFileChange.lineNumbers = this.extractLineNumbers(fileDiff);
         }
 
         return baseFileChange;
@@ -149,8 +145,8 @@ export class GitService {
       // Parse hunk headers (e.g., @@ -1,4 +1,6 @@)
       const hunkMatch = /^@@\s+-(\d+)(?:,\d+)?\s+\+(\d+)(?:,\d+)?\s+@@/.exec(line);
       if (hunkMatch) {
-        currentOldLine = parseInt(hunkMatch[1], LIMITS.HUNK_HEADER_OFFSET) - 1;
-        currentNewLine = parseInt(hunkMatch[2], LIMITS.HUNK_HEADER_OFFSET) - 1;
+        currentOldLine = Number.parseInt(hunkMatch[1], LIMITS.HUNK_HEADER_OFFSET) - 1;
+        currentNewLine = Number.parseInt(hunkMatch[2], LIMITS.HUNK_HEADER_OFFSET) - 1;
         continue;
       }
 
