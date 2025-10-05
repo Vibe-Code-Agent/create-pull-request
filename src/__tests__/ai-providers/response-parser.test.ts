@@ -299,20 +299,6 @@ describe('ResponseParser', () => {
         });
     });
 
-    describe('isValidJSON', () => {
-        it('should return true for valid JSON', () => {
-            expect(parser['isValidJSON']('{"key": "value"}')).toBe(true);
-        });
-
-        it('should return false for invalid JSON', () => {
-            expect(parser['isValidJSON']('{"key": "value"')).toBe(false);
-        });
-
-        it('should return false for non-JSON string', () => {
-            expect(parser['isValidJSON']('plain text')).toBe(false);
-        });
-    });
-
     describe('cleanJSONResponse', () => {
         it('should remove markdown code blocks', () => {
             const content = '```json\n{"key": "value"}\n```';

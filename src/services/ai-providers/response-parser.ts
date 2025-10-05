@@ -47,31 +47,17 @@ export class ResponseParser {
   private parseResponseContent(content: string): GeneratedPRContent {
     // Try to parse as JSON first
     const cleanedContent = this.cleanJSONResponse(content);
-    if (this.isValidJSON(cleanedContent)) {
-      try {
-        const parsed = JSON.parse(cleanedContent);
-
-        return {
-          title: parsed.title || this.extractTitle(content),
-          body: parsed.description || parsed.body || content,
-          summary: parsed.summary
-        };
-      } catch (_error) {
-        // If JSON parsing fails, fall back to text extraction
-        return this.extractFromText(content);
-      }
-    }
-
-    // If not JSON, extract from plain text
-    return this.extractFromText(content);
-  }
-
-  private isValidJSON(str: string): boolean {
     try {
-      JSON.parse(str);
-      return true;
-    } catch {
-      return false;
+      const parsed = JSON.parse(cleanedContent);
+
+      return {
+        title: parsed.title || this.extractTitle(content),
+        body: parsed.description || parsed.body || content,
+        summary: parsed.summary
+      };
+    } catch (_error) {
+      // If JSON parsing fails, fall back to text extraction
+      return this.extractFromText(content);
     }
   }
 

@@ -21,43 +21,43 @@ export class AIProviderManager {
     const aiProvidersConfig = this.getConfigSafely('aiProviders');
 
     // Claude client (primary AI provider)
-    const claudeKey = (aiProvidersConfig as any)?.claude?.apiKey ||
+    const claudeKey = aiProvidersConfig?.claude?.apiKey ||
       process.env.ANTHROPIC_API_KEY ||
       process.env.CLAUDE_API_KEY;
 
     if (claudeKey) {
       this.providers.set(AI_PROVIDERS.CLAUDE, new ClaudeProvider(
         claudeKey,
-        (aiProvidersConfig as any)?.claude?.model
+        aiProvidersConfig?.claude?.model
       ));
     }
 
     // ChatGPT client
-    const chatgptKey = (aiProvidersConfig as any)?.openai?.apiKey ||
+    const chatgptKey = aiProvidersConfig?.openai?.apiKey ||
       process.env.OPENAI_API_KEY ||
       process.env.CHATGPT_API_KEY;
 
     if (chatgptKey) {
       this.providers.set(AI_PROVIDERS.CHATGPT, new ChatGPTProvider(
         chatgptKey,
-        (aiProvidersConfig as any)?.openai?.model
+        aiProvidersConfig?.openai?.model
       ));
     }
 
     // Gemini client
-    const geminiKey = (aiProvidersConfig as any)?.gemini?.apiKey ||
+    const geminiKey = aiProvidersConfig?.gemini?.apiKey ||
       process.env.GEMINI_API_KEY ||
       process.env.GOOGLE_API_KEY;
 
     if (geminiKey) {
       this.providers.set(AI_PROVIDERS.GEMINI, new GeminiProvider(
         geminiKey,
-        (aiProvidersConfig as any)?.gemini?.model
+        aiProvidersConfig?.gemini?.model
       ));
     }
 
     // GitHub Copilot client
-    const copilotKey = (copilotConfig as any)?.apiToken || (githubConfig as any)?.token;
+    const copilotKey = copilotConfig?.apiToken || githubConfig?.token;
 
     if (copilotKey) {
       this.providers.set(AI_PROVIDERS.COPILOT, new CopilotProvider(copilotKey));
@@ -66,7 +66,7 @@ export class AIProviderManager {
 
   private getConfigSafely(key: string): any {
     try {
-      return getConfig(key as any);
+      return getConfig(key as keyof import('../../utils/config.js').EnvironmentConfig);
     } catch {
       return null;
     }
@@ -114,27 +114,8 @@ export class AIProviderManager {
       throw new Error(`Provider ${selectedProvider} not available`);
     }
 
-    try {
-      const response = await aiProvider.generateContent(prompt);
-      return response.content;
-    } catch (error) {
-      // If the selected provider fails and we have other providers, try fallback
-      if (!provider && this.providers.size > 1) {
-        const fallbackProviders = Array.from(this.providers.keys()).filter(p => p !== selectedProvider);
-
-        for (const fallbackProvider of fallbackProviders) {
-          try {
-            const fallbackResponse = await this.providers.get(fallbackProvider)!.generateContent(prompt);
-            return fallbackResponse.content;
-          } catch (_fallbackError) {
-            // Continue to next fallback provider
-            continue;
-          }
-        }
-      }
-
-      throw error;
-    }
+    const response = await aiProvider.generateContent(prompt);
+    return response.content;
   }
 
   getAvailableProviders(): AIProvider[] {

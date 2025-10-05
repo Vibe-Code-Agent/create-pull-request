@@ -203,60 +203,20 @@ describe('AIProviderManager', () => {
         .rejects.toThrow('Provider nonexistent not available');
     });
 
-    it('should try fallback providers on failure', async () => {
+    it('should throw error when provider fails', async () => {
       const mockClaudeProvider = {
         generateContent: jest.fn().mockRejectedValue(new Error('Claude failed'))
       };
 
-      const mockChatGPTProvider = {
-        generateContent: jest.fn().mockResolvedValue({
-          content: 'Generated content',
-          provider: AI_PROVIDERS.CHATGPT
-        })
-      };
-
       manager['providers'].set(AI_PROVIDERS.CLAUDE, mockClaudeProvider as any);
-      manager['providers'].set(AI_PROVIDERS.CHATGPT, mockChatGPTProvider as any);
 
-      // Mock selectProvider to return AI_PROVIDERS.CLAUDE first
+      // Mock selectProvider to return AI_PROVIDERS.CLAUDE
       jest.spyOn(manager, 'selectProvider').mockResolvedValue(AI_PROVIDERS.CLAUDE);
 
-      const result = await manager.generateContent('test prompt');
+      await expect(manager.generateContent('test prompt'))
+        .rejects.toThrow('Claude failed');
 
-      expect(result).toBe('Generated content');
       expect(mockClaudeProvider.generateContent).toHaveBeenCalledWith('test prompt');
-      expect(mockChatGPTProvider.generateContent).toHaveBeenCalledWith('test prompt');
-    });
-
-    it('should continue to next fallback when multiple providers fail', async () => {
-      const mockClaudeProvider = {
-        generateContent: jest.fn().mockRejectedValue(new Error('Claude failed'))
-      };
-
-      const mockChatGPTProvider = {
-        generateContent: jest.fn().mockRejectedValue(new Error('ChatGPT failed'))
-      };
-
-      const mockGeminiProvider = {
-        generateContent: jest.fn().mockResolvedValue({
-          content: 'Generated content',
-          provider: AI_PROVIDERS.GEMINI
-        })
-      };
-
-      manager['providers'].set(AI_PROVIDERS.CLAUDE, mockClaudeProvider as any);
-      manager['providers'].set(AI_PROVIDERS.CHATGPT, mockChatGPTProvider as any);
-      manager['providers'].set(AI_PROVIDERS.GEMINI, mockGeminiProvider as any);
-
-      // Mock selectProvider to return AI_PROVIDERS.CLAUDE first
-      jest.spyOn(manager, 'selectProvider').mockResolvedValue(AI_PROVIDERS.CLAUDE);
-
-      const result = await manager.generateContent('test prompt');
-
-      expect(result).toBe('Generated content');
-      expect(mockClaudeProvider.generateContent).toHaveBeenCalledWith('test prompt');
-      expect(mockChatGPTProvider.generateContent).toHaveBeenCalledWith('test prompt');
-      expect(mockGeminiProvider.generateContent).toHaveBeenCalledWith('test prompt');
     });
 
     it('should not try fallback when provider is explicitly specified', async () => {
