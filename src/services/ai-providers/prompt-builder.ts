@@ -42,10 +42,10 @@ export class PromptBuilder {
     // Confluence pages context
     if (jiraTicket.confluencePages && jiraTicket.confluencePages.length > 0) {
       prompt += `\n## Related Documentation:\n`;
-      jiraTicket.confluencePages.forEach(page => {
+      for (const page of jiraTicket.confluencePages) {
         prompt += `- **${page.title}**: ${page.content.substring(0, 200)}...\n`;
         prompt += `  Source: ${page.url}\n`;
-      });
+      }
     }
 
     // Git changes information
@@ -60,7 +60,7 @@ export class PromptBuilder {
 
     // File details
     prompt += `\n## Files Modified:\n`;
-    gitChanges.files.forEach(file => {
+    for (const file of gitChanges.files) {
       prompt += `- **${file.file}** (${file.status})\n`;
       prompt += `  - Changes: ${file.changes} lines\n`;
       prompt += `  - Insertions: ${file.insertions}\n`;
@@ -86,7 +86,7 @@ export class PromptBuilder {
       if (relevance) {
         prompt += `  - Relevance: ${relevance}\n`;
       }
-    });
+    }
 
     // Diff content (if available and not too large)
     if (diffContent && diffContent.length < 10000) {

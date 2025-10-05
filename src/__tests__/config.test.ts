@@ -255,11 +255,11 @@ describe('Config Utils', () => {
         { path: 'github.token', value: '' }
       ];
 
-      testCases.forEach(({ path, value }) => {
+      for (const { path, value } of testCases) {
         const invalidConfig = JSON.parse(JSON.stringify(mockValidConfig));
         const keys = path.split('.');
         let obj = invalidConfig;
-        
+
         for (let i = 0; i < keys.length - 1; i++) {
           obj = obj[keys[i]];
         }
@@ -269,7 +269,7 @@ describe('Config Utils', () => {
 
         const result = validateConfig();
         expect(result).toBe(false);
-      });
+      }
     });
 
     it('should handle missing sections gracefully', () => {
