@@ -49,21 +49,24 @@ export class ResponseParser {
     const cleanedContent = this.cleanJSONResponse(content);
     try {
       const parsed = JSON.parse(cleanedContent);
-
       return {
         title: parsed.title || this.extractTitle(content),
         body: parsed.description || parsed.body || content,
         summary: parsed.summary
       };
-    } catch (_error) {
+    } catch {
       // If JSON parsing fails, fall back to text extraction
-      return this.extractFromText(content);
+      return {
+        title: this.extractTitle(content) || 'Pull Request',
+        body: content,
+        summary: this.extractSummary(content)
+      };
     }
   }
 
   private cleanJSONResponse(content: string): string {
     // Remove markdown code blocks if present
-    let cleaned = content.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+    let cleaned = content.replaceAll(/```json\s*/g, '').replaceAll(/```\s*/g, '');
 
     // Remove any leading/trailing whitespace
     cleaned = cleaned.trim();
@@ -77,16 +80,6 @@ export class ResponseParser {
     return cleaned;
   }
 
-  private extractFromText(content: string): GeneratedPRContent {
-    const title = this.extractTitle(content);
-
-    return {
-      title: title || 'Pull Request',
-      body: content,
-      summary: this.extractSummary(content)
-    };
-  }
-
   private extractTitle(content: string): string | null {
     // Look for title patterns
     const titlePatterns = [
@@ -98,7 +91,7 @@ export class ResponseParser {
 
     for (const pattern of titlePatterns) {
       const match = pattern.exec(content);
-      if (match && match[1]) {
+      if (match?.[1]) {
         return match[1].trim();
       }
     }
@@ -125,7 +118,7 @@ export class ResponseParser {
 
     for (const pattern of summaryPatterns) {
       const match = pattern.exec(content);
-      if (match && match[1]) {
+      if (match?.[1]) {
         return match[1].trim();
       }
     }

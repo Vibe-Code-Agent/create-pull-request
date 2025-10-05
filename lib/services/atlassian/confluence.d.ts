@@ -10,7 +10,7 @@ export declare class ConfluenceService extends BaseAtlassianService {
     /**
      * Get Confluence pages linked to a Jira ticket
      */
-    getConfluencePages(ticketKey: string, remoteLinks: any[]): Promise<ConfluencePage[]>;
+    getConfluencePages(remoteLinks: any[]): Promise<ConfluencePage[]>;
     /**
      * Get content of a specific Confluence page
      */

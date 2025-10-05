@@ -19,7 +19,7 @@ export class ConfluenceService extends BaseAtlassianService {
     /**
      * Get Confluence pages linked to a Jira ticket
      */
-    async getConfluencePages(ticketKey: string, remoteLinks: any[]): Promise<ConfluencePage[]> {
+    async getConfluencePages(remoteLinks: any[]): Promise<ConfluencePage[]> {
         const confluencePages: ConfluencePage[] = [];
 
         if (!Array.isArray(remoteLinks)) {
