@@ -316,9 +316,9 @@ describe('Spinner', () => {
       expect(writeCallsWithFrames.length).toBeGreaterThan(3);
 
       // Should contain expected frames
-      writeCallsWithFrames.forEach(frame => {
+      for (const frame of writeCallsWithFrames) {
         expect(frames).toContain(frame);
-      });
+      }
     });
 
     it('should include text in spinner output', () => {

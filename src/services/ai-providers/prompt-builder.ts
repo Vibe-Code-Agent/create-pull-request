@@ -19,11 +19,26 @@ export class PromptBuilder {
   buildPrompt(options: PromptBuilderOptions, summary?: string): string {
     const { jiraTicket, gitChanges, template, diffContent, repoInfo } = options;
 
+    let prompt = this.buildPromptHeader();
+    prompt += this.buildJiraTicketSection(jiraTicket);
+    prompt += this.buildConfluencePagesSection(jiraTicket);
+    prompt += this.buildGitChangesSection(gitChanges);
+    prompt += this.buildFileDetailsSection(gitChanges, jiraTicket, repoInfo);
+    prompt += this.buildDiffContentSection(diffContent);
+    prompt += this.buildTemplateAndSummarySection(template, summary);
+    prompt += this.buildInstructionsSection();
+
+    return prompt;
+  }
+
+  private buildPromptHeader(): string {
     let prompt = `You are an expert software engineer helping to create a comprehensive pull request description. `;
     prompt += `Please analyze the following information and generate a well-structured pull request description.\n\n`;
+    return prompt;
+  }
 
-    // Jira ticket information
-    prompt += `## Jira Ticket Information:\n`;
+  private buildJiraTicketSection(jiraTicket: JiraTicket): string {
+    let prompt = `## Jira Ticket Information:\n`;
     prompt += `- **Ticket**: ${jiraTicket.key}\n`;
     prompt += `- **Summary**: ${jiraTicket.summary}\n`;
     prompt += `- **Type**: ${jiraTicket.issueType}\n`;
@@ -39,17 +54,24 @@ export class PromptBuilder {
       prompt += `- **Parent Ticket**: ${jiraTicket.parentTicket.key} - ${jiraTicket.parentTicket.summary}\n`;
     }
 
-    // Confluence pages context
-    if (jiraTicket.confluencePages && jiraTicket.confluencePages.length > 0) {
-      prompt += `\n## Related Documentation:\n`;
-      jiraTicket.confluencePages.forEach(page => {
-        prompt += `- **${page.title}**: ${page.content.substring(0, 200)}...\n`;
-        prompt += `  Source: ${page.url}\n`;
-      });
+    return prompt;
+  }
+
+  private buildConfluencePagesSection(jiraTicket: JiraTicket): string {
+    if (!jiraTicket.confluencePages || jiraTicket.confluencePages.length === 0) {
+      return '';
     }
 
-    // Git changes information
-    prompt += `\n## Code Changes:\n`;
+    let prompt = `\n## Related Documentation:\n`;
+    for (const page of jiraTicket.confluencePages) {
+      prompt += `- **${page.title}**: ${page.content.substring(0, 200)}...\n`;
+      prompt += `  Source: ${page.url}\n`;
+    }
+    return prompt;
+  }
+
+  private buildGitChangesSection(gitChanges: GitChanges): string {
+    let prompt = `\n## Code Changes:\n`;
     prompt += `- **Total Files Changed**: ${gitChanges.totalFiles}\n`;
     prompt += `- **Total Insertions**: ${gitChanges.totalInsertions}\n`;
     prompt += `- **Total Deletions**: ${gitChanges.totalDeletions}\n`;
@@ -58,61 +80,84 @@ export class PromptBuilder {
       prompt += `- **Commits**: ${gitChanges.commits.join(', ')}\n`;
     }
 
-    // File details
-    prompt += `\n## Files Modified:\n`;
-    gitChanges.files.forEach(file => {
-      prompt += `- **${file.file}** (${file.status})\n`;
-      prompt += `  - Changes: ${file.changes} lines\n`;
-      prompt += `  - Insertions: ${file.insertions}\n`;
-      prompt += `  - Deletions: ${file.deletions}\n`;
+    return prompt;
+  }
 
-      if (repoInfo && file.lineNumbers) {
-        const fileUrl = this.generateFileUrl(repoInfo, file.file);
-        prompt += `  - File: ${fileUrl}\n`;
+  private buildFileDetailsSection(gitChanges: GitChanges, jiraTicket: JiraTicket, repoInfo?: { owner: string; repo: string; currentBranch: string }): string {
+    let prompt = `\n## Files Modified:\n`;
+    for (const file of gitChanges.files) {
+      prompt += this.buildFileDetail(file, jiraTicket, repoInfo);
+    }
+    return prompt;
+  }
 
-        if (file.lineNumbers.added.length > 0) {
-          const addedLinks = this.generateLineLinks(repoInfo, file.file, file.lineNumbers.added);
-          prompt += `  - Added lines: ${addedLinks}\n`;
-        }
+  private buildFileDetail(file: FileChange, jiraTicket: JiraTicket, repoInfo?: { owner: string; repo: string; currentBranch: string }): string {
+    let prompt = `- **${file.file}** (${file.status})\n`;
+    prompt += `  - Changes: ${file.changes} lines\n`;
+    prompt += `  - Insertions: ${file.insertions}\n`;
+    prompt += `  - Deletions: ${file.deletions}\n`;
 
-        if (file.lineNumbers.removed.length > 0) {
-          const removedLinks = this.generateLineLinks(repoInfo, file.file, file.lineNumbers.removed);
-          prompt += `  - Removed lines: ${removedLinks}\n`;
-        }
-      }
-
-      // Add file relevance description
-      const relevance = this.getFileRelevanceDescription(file, jiraTicket);
-      if (relevance) {
-        prompt += `  - Relevance: ${relevance}\n`;
-      }
-    });
-
-    // Diff content (if available and not too large)
-    if (diffContent && diffContent.length < 10000) {
-      prompt += `\n## Code Diff:\n`;
-      prompt += `\`\`\`diff\n${diffContent}\n\`\`\`\n`;
-    } else if (diffContent) {
-      prompt += `\n## Code Diff Summary:\n`;
-      const diffSummary = this.extractDiffSummary(diffContent);
-      prompt += diffSummary.join('\n') + '\n';
+    if (repoInfo && file.lineNumbers) {
+      prompt += this.buildFileLinks(file, repoInfo);
     }
 
-    // Template context
+    const relevance = this.getFileRelevanceDescription(file, jiraTicket);
+    if (relevance) {
+      prompt += `  - Relevance: ${relevance}\n`;
+    }
+
+    return prompt;
+  }
+
+  private buildFileLinks(file: FileChange, repoInfo: { owner: string; repo: string; currentBranch: string }): string {
+    const fileUrl = this.generateFileUrl(repoInfo, file.file);
+    let prompt = `  - File: ${fileUrl}\n`;
+
+    if (file.lineNumbers!.added.length > 0) {
+      const addedLinks = this.generateLineLinks(repoInfo, file.file, file.lineNumbers!.added);
+      prompt += `  - Added lines: ${addedLinks}\n`;
+    }
+
+    if (file.lineNumbers!.removed.length > 0) {
+      const removedLinks = this.generateLineLinks(repoInfo, file.file, file.lineNumbers!.removed);
+      prompt += `  - Removed lines: ${removedLinks}\n`;
+    }
+
+    return prompt;
+  }
+
+  private buildDiffContentSection(diffContent?: string): string {
+    if (!diffContent) {
+      return '';
+    }
+
+    if (diffContent.length < 10000) {
+      return `\n## Code Diff:\n\`\`\`diff\n${diffContent}\n\`\`\`\n`;
+    } else {
+      const diffSummary = this.extractDiffSummary(diffContent);
+      return `\n## Code Diff Summary:\n${diffSummary.join('\n')}\n`;
+    }
+  }
+
+  private buildTemplateAndSummarySection(template?: PullRequestTemplate, summary?: string): string {
+    let prompt = '';
+
     if (template) {
       prompt += `\n## Template Context:\n`;
       prompt += `Use this template as a guide for the structure:\n`;
       prompt += `\`\`\`\n${template.content}\n\`\`\`\n`;
     }
 
-    // Summary context (if provided)
     if (summary) {
       prompt += `\n## AI-Generated Summary:\n`;
       prompt += `${summary}\n`;
     }
 
-    // Instructions
-    prompt += `\n## Instructions:\n`;
+    return prompt;
+  }
+
+  private buildInstructionsSection(): string {
+    let prompt = `\n## Instructions:\n`;
     prompt += `Please generate a comprehensive pull request description that includes:\n`;
     prompt += `1. A clear, descriptive title\n`;
     prompt += `2. A detailed description explaining what changes were made and why\n`;
