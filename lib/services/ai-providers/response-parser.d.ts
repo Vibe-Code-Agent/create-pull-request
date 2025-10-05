@@ -9,7 +9,6 @@ export declare class ResponseParser {
     private extractContentFromResponse;
     private parseResponseContent;
     private cleanJSONResponse;
-    private extractFromText;
     private extractTitle;
     private extractSummary;
 }

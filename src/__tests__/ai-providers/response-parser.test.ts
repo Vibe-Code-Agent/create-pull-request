@@ -325,31 +325,6 @@ describe('ResponseParser', () => {
         });
     });
 
-    describe('extractFromText', () => {
-        it('should extract title and body from text', () => {
-            const content = '# Test Title\n\nThis is the body content.';
-
-            const result = parser['extractFromText'](content);
-
-            expect(result).toEqual({
-                title: 'Test Title',
-                body: content,
-                summary: undefined
-            });
-        });
-
-        it('should use default title when none found', () => {
-            const content = 'This is just body content.';
-
-            const result = parser['extractFromText'](content);
-
-            expect(result).toEqual({
-                title: 'This is just body content.',
-                body: content,
-                summary: 'This is just body content.'
-            });
-        });
-    });
 
     describe('extractTitle', () => {
         it('should extract markdown header', () => {

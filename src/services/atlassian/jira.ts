@@ -45,7 +45,7 @@ export class JiraService extends BaseAtlassianService {
      * Fetch parent ticket information if it exists and is not an Epic
      */
     private async fetchParentTicket(fields: any): Promise<any> {
-        if (!fields.parent || fields.issuetype.name.toLowerCase() === 'epic') {
+        if (!fields.parent || fields.issuetype?.name?.toLowerCase() === 'epic') {
             return null;
         }
 
@@ -56,7 +56,7 @@ export class JiraService extends BaseAtlassianService {
         });
         const parentFields = parentResponse.data.fields;
 
-        if (parentFields.summary && parentFields.summary.trim()) {
+        if (parentFields.summary?.trim()) {
             return {
                 key: fields.parent.key,
                 summary: parentFields.summary.trim(),
@@ -99,8 +99,7 @@ export class JiraService extends BaseAtlassianService {
 
         // Check if any links are Confluence pages
         return remoteLinks.some((link: any) =>
-            link.object?.url &&
-            (link.object.url.includes('confluence') || link.object.url.includes('wiki'))
+            link.object?.url?.includes('confluence') || link.object?.url?.includes('wiki')
         );
     }
 
