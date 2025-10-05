@@ -62,6 +62,18 @@ export declare const CONFLUENCE_ENDPOINTS: {
     readonly CONTENT_BY_ID: "/content/{id}";
     readonly SEARCH: "/content/search";
 };
+export declare const AI_PROVIDERS: {
+    readonly CLAUDE: "claude";
+    readonly CHATGPT: "chatgpt";
+    readonly GEMINI: "gemini";
+    readonly COPILOT: "copilot";
+};
+export declare const AI_PROVIDER_NAMES: {
+    readonly CLAUDE: "Claude (Anthropic)";
+    readonly CHATGPT: "ChatGPT (OpenAI)";
+    readonly GEMINI: "Gemini (Google)";
+    readonly COPILOT: "GitHub Copilot";
+};
 export declare const SYSTEM: {
     readonly EXECUTABLE_PERMISSIONS: "755";
     readonly MIN_NODE_VERSION: ">=18.0.0";

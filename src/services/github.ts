@@ -24,8 +24,8 @@ export interface PullRequestTemplate {
 }
 
 export class GitHubService {
-  private octokit: Octokit;
-  private git: SimpleGit;
+  private readonly octokit: Octokit;
+  private readonly git: SimpleGit;
 
   constructor() {
     const githubConfig = getConfig('github');
@@ -51,7 +51,7 @@ export class GitHubService {
     }
 
     const url = originRemote.refs.push;
-    const match = url.match(REGEX_PATTERNS.GITHUB_URL);
+    const match = REGEX_PATTERNS.GITHUB_URL.exec(url);
 
     if (!match) {
       throw new Error('Unable to parse GitHub repository from remote URL');

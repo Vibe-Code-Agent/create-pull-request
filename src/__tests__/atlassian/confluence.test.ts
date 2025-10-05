@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { ConfluenceService, ConfluencePage } from '../../services/atlassian/confluence.js';
+import { ConfluenceService } from '../../services/atlassian/confluence.js';
 import { getConfig } from '../../utils/config.js';
 
 // Mock dependencies
@@ -498,36 +498,6 @@ describe('ConfluenceService', () => {
 
             expect(result?.content.length).toBeLessThanOrEqual(2000);
             expect(result?.content).toMatch(/\.\.\.$/); // Should end with ...
-        });
-    });
-
-    describe('validateConnection', () => {
-        it('should validate connection successfully', async () => {
-            const mockUserResponse = {
-                data: {
-                    accountId: 'user123',
-                    displayName: 'Test User'
-                }
-            };
-
-            mockAxiosInstance.get.mockResolvedValue(mockUserResponse);
-
-            const result = await confluenceService.validateConnection();
-
-            expect(result).toBe(true);
-            expect(mockAxiosInstance.get).toHaveBeenCalledWith('/user/current');
-        });
-
-        it('should throw error for authentication failures', async () => {
-            mockAxiosInstance.get.mockRejectedValue(new Error('Unauthorized'));
-
-            await expect(confluenceService.validateConnection()).rejects.toThrow('Unauthorized');
-        });
-
-        it('should throw error for network errors', async () => {
-            mockAxiosInstance.get.mockRejectedValue(new Error('Network Error'));
-
-            await expect(confluenceService.validateConnection()).rejects.toThrow('Network Error');
         });
     });
 });

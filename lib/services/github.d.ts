@@ -14,8 +14,8 @@ export interface PullRequestTemplate {
     content: string;
 }
 export declare class GitHubService {
-    private octokit;
-    private git;
+    private readonly octokit;
+    private readonly git;
     constructor();
     getCurrentRepo(): Promise<GitHubRepo>;
     getPullRequestTemplates(): Promise<PullRequestTemplate[]>;

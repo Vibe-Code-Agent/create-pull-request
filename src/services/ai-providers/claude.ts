@@ -1,9 +1,9 @@
-import { BaseAIProvider, AIProvider } from './base.js';
-import { API_URLS, DEFAULT_MODELS } from '../../constants/index.js';
+import { BaseAIProvider } from './base.js';
+import { API_URLS, DEFAULT_MODELS, AI_PROVIDERS } from '../../constants/index.js';
 
 export class ClaudeProvider extends BaseAIProvider {
   constructor(apiKey: string, model?: string) {
-    super('claude', apiKey, model);
+    super(AI_PROVIDERS.CLAUDE, apiKey, model);
   }
 
   getDefaultModel(): string {
@@ -35,7 +35,7 @@ export class ClaudeProvider extends BaseAIProvider {
   }
 
   extractContentFromResponse(response: any): string {
-    if (!response.content || !response.content[0]?.text) {
+    if (!response.content?.[0]?.text) {
       throw new Error('No content received from Claude API');
     }
     return response.content[0].text;

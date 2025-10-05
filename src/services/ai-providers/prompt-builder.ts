@@ -17,7 +17,7 @@ export interface PromptBuilderOptions {
 
 export class PromptBuilder {
   buildPrompt(options: PromptBuilderOptions, summary?: string): string {
-    const { jiraTicket, gitChanges, template, diffContent, prTitle, repoInfo } = options;
+    const { jiraTicket, gitChanges, template, diffContent, repoInfo } = options;
 
     let prompt = `You are an expert software engineer helping to create a comprehensive pull request description. `;
     prompt += `Please analyze the following information and generate a well-structured pull request description.\n\n`;
@@ -65,22 +65,22 @@ export class PromptBuilder {
       prompt += `  - Changes: ${file.changes} lines\n`;
       prompt += `  - Insertions: ${file.insertions}\n`;
       prompt += `  - Deletions: ${file.deletions}\n`;
-      
+
       if (repoInfo && file.lineNumbers) {
         const fileUrl = this.generateFileUrl(repoInfo, file.file);
         prompt += `  - File: ${fileUrl}\n`;
-        
+
         if (file.lineNumbers.added.length > 0) {
           const addedLinks = this.generateLineLinks(repoInfo, file.file, file.lineNumbers.added);
           prompt += `  - Added lines: ${addedLinks}\n`;
         }
-        
+
         if (file.lineNumbers.removed.length > 0) {
           const removedLinks = this.generateLineLinks(repoInfo, file.file, file.lineNumbers.removed);
           prompt += `  - Removed lines: ${removedLinks}\n`;
         }
       }
-      
+
       // Add file relevance description
       const relevance = this.getFileRelevanceDescription(file, jiraTicket);
       if (relevance) {
@@ -213,4 +213,3 @@ export class PromptBuilder {
     return summary.slice(0, 20); // Limit to first 20 files
   }
 }
-

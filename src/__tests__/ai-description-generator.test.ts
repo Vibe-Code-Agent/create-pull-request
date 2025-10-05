@@ -2,6 +2,7 @@ import { AIDescriptionGeneratorService, GenerateDescriptionOptions } from '../se
 import { AIProviderManager } from '../services/ai-providers/manager.js';
 import { PromptBuilder } from '../services/ai-providers/prompt-builder.js';
 import { ResponseParser } from '../services/ai-providers/response-parser.js';
+import { AI_PROVIDERS } from '../constants/index.js';
 
 // Mock the modular classes
 jest.mock('../services/ai-providers/manager.js');
@@ -58,7 +59,7 @@ describe('AIDescriptionGeneratorService', () => {
 
     // Create mock instances
     mockProviderManager = {
-      selectProvider: jest.fn().mockResolvedValue('claude'),
+      selectProvider: jest.fn().mockResolvedValue(AI_PROVIDERS.CLAUDE),
       generateContent: jest.fn().mockResolvedValue('Generated content')
     } as any;
 
@@ -97,7 +98,7 @@ describe('AIDescriptionGeneratorService', () => {
       expect(mockProviderManager.selectProvider).toHaveBeenCalledTimes(2); // Once for summary, once for main generation
       expect(mockPromptBuilder.buildPrompt).toHaveBeenCalledWith(mockOptions, 'Generated content');
       expect(mockProviderManager.generateContent).toHaveBeenCalledTimes(2);
-      expect(mockResponseParser.parseAIResponse).toHaveBeenCalledWith({ content: 'Generated content' }, 'claude');
+      expect(mockResponseParser.parseAIResponse).toHaveBeenCalledWith({ content: 'Generated content' }, AI_PROVIDERS.CLAUDE);
 
       expect(result).toEqual({
         title: 'Test Title',
@@ -139,7 +140,7 @@ describe('AIDescriptionGeneratorService', () => {
       expect(mockProviderManager.selectProvider).toHaveBeenCalled();
       expect(mockProviderManager.generateContent).toHaveBeenCalledWith(
         'Generate a concise summary of the changes in this pull request based on the Jira ticket and file changes. Focus on the key modifications and their purpose.',
-        'claude'
+        AI_PROVIDERS.CLAUDE
       );
       expect(summary).toBe('Generated content');
     });

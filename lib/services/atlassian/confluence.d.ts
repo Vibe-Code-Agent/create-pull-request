@@ -15,9 +15,5 @@ export declare class ConfluenceService extends BaseAtlassianService {
      * Get content of a specific Confluence page
      */
     getConfluencePageContent(pageUrl: string): Promise<ConfluencePage | null>;
-    /**
-     * Validate Confluence connection
-     */
-    validateConnection(): Promise<boolean>;
 }
 //# sourceMappingURL=confluence.d.ts.map

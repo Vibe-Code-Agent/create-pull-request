@@ -1,7 +1,7 @@
 export declare class AppError extends Error {
-    code?: string | undefined;
-    statusCode?: number | undefined;
-    isOperational: boolean;
+    readonly code?: string | undefined;
+    readonly statusCode?: number | undefined;
+    readonly isOperational: boolean;
     constructor(message: string, code?: string | undefined, statusCode?: number | undefined, isOperational?: boolean);
 }
 export declare function handleError(error: unknown): void;

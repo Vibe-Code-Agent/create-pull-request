@@ -5,6 +5,8 @@ import { AIProviderManager } from './ai-providers/manager.js';
 import { PromptBuilder } from './ai-providers/prompt-builder.js';
 import { ResponseParser, GeneratedPRContent } from './ai-providers/response-parser.js';
 
+export { GeneratedPRContent } from './ai-providers/response-parser.js';
+
 export interface GenerateDescriptionOptions {
   jiraTicket: JiraTicket;
   gitChanges: GitChanges;
@@ -18,12 +20,10 @@ export interface GenerateDescriptionOptions {
   };
 }
 
-export { GeneratedPRContent };
-
 export class AIDescriptionGeneratorService {
-  private providerManager: AIProviderManager;
-  private promptBuilder: PromptBuilder;
-  private responseParser: ResponseParser;
+  private readonly providerManager: AIProviderManager;
+  private readonly promptBuilder: PromptBuilder;
+  private readonly responseParser: ResponseParser;
 
   constructor() {
     this.providerManager = new AIProviderManager();

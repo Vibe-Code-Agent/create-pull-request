@@ -1,8 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
-import { getConfig } from '../../utils/config.js';
-import { API_URLS, LIMITS, HEADERS, DEFAULT_MODELS } from '../../constants/index.js';
+import { LIMITS, HEADERS, AI_PROVIDERS } from '../../constants/index.js';
 
-export type AIProvider = 'claude' | 'chatgpt' | 'gemini' | 'copilot';
+export type AIProvider = typeof AI_PROVIDERS[keyof typeof AI_PROVIDERS];
 
 export interface AIConfig {
   provider: AIProvider;
@@ -16,10 +15,10 @@ export interface AIResponse {
 }
 
 export abstract class BaseAIProvider {
-  protected client: AxiosInstance;
-  protected provider: AIProvider;
-  protected apiKey: string;
-  protected model: string;
+  protected readonly client: AxiosInstance;
+  protected readonly provider: AIProvider;
+  protected readonly apiKey: string;
+  protected readonly model: string;
 
   constructor(provider: AIProvider, apiKey: string, model?: string) {
     this.provider = provider;

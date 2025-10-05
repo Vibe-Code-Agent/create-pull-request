@@ -1,13 +1,14 @@
 import inquirer from 'inquirer';
 import { getConfig } from '../../utils/config.js';
 import { BaseAIProvider, AIProvider } from './base.js';
+import { AI_PROVIDERS, AI_PROVIDER_NAMES } from '../../constants/index.js';
 import { ClaudeProvider } from './claude.js';
 import { ChatGPTProvider } from './chatgpt.js';
 import { GeminiProvider } from './gemini.js';
 import { CopilotProvider } from './copilot.js';
 
 export class AIProviderManager {
-  private providers: Map<AIProvider, BaseAIProvider> = new Map();
+  private readonly providers: Map<AIProvider, BaseAIProvider> = new Map();
   private selectedProvider: AIProvider | null = null;
 
   constructor() {
@@ -15,71 +16,59 @@ export class AIProviderManager {
   }
 
   private initializeProviders(): void {
-    let githubConfig;
-    let copilotConfig;
-
-    try {
-      githubConfig = getConfig('github');
-    } catch {
-      githubConfig = null;
-    }
-
-    try {
-      copilotConfig = getConfig('copilot');
-    } catch {
-      copilotConfig = null;
-    }
-
-    // Try to get AI providers config
-    let aiProvidersConfig;
-    try {
-      aiProvidersConfig = getConfig('aiProviders');
-    } catch {
-      // Fallback to environment variables if config doesn't exist
-      aiProvidersConfig = null;
-    }
+    const githubConfig = this.getConfigSafely('github');
+    const copilotConfig = this.getConfigSafely('copilot');
+    const aiProvidersConfig = this.getConfigSafely('aiProviders');
 
     // Claude client (primary AI provider)
-    const claudeKey = aiProvidersConfig?.claude?.apiKey ||
+    const claudeKey = (aiProvidersConfig as any)?.claude?.apiKey ||
       process.env.ANTHROPIC_API_KEY ||
       process.env.CLAUDE_API_KEY;
 
     if (claudeKey) {
-      this.providers.set('claude', new ClaudeProvider(
+      this.providers.set(AI_PROVIDERS.CLAUDE, new ClaudeProvider(
         claudeKey,
-        aiProvidersConfig?.claude?.model
+        (aiProvidersConfig as any)?.claude?.model
       ));
     }
 
     // ChatGPT client
-    const chatgptKey = aiProvidersConfig?.openai?.apiKey ||
+    const chatgptKey = (aiProvidersConfig as any)?.openai?.apiKey ||
       process.env.OPENAI_API_KEY ||
       process.env.CHATGPT_API_KEY;
 
     if (chatgptKey) {
-      this.providers.set('chatgpt', new ChatGPTProvider(
+      this.providers.set(AI_PROVIDERS.CHATGPT, new ChatGPTProvider(
         chatgptKey,
-        aiProvidersConfig?.openai?.model
+        (aiProvidersConfig as any)?.openai?.model
       ));
     }
 
     // Gemini client
-    const geminiKey = aiProvidersConfig?.gemini?.apiKey ||
+    const geminiKey = (aiProvidersConfig as any)?.gemini?.apiKey ||
       process.env.GEMINI_API_KEY ||
       process.env.GOOGLE_API_KEY;
 
     if (geminiKey) {
-      this.providers.set('gemini', new GeminiProvider(
+      this.providers.set(AI_PROVIDERS.GEMINI, new GeminiProvider(
         geminiKey,
-        aiProvidersConfig?.gemini?.model
+        (aiProvidersConfig as any)?.gemini?.model
       ));
     }
 
     // GitHub Copilot client
-    const copilotKey = copilotConfig?.apiToken || githubConfig?.token;
+    const copilotKey = (copilotConfig as any)?.apiToken || (githubConfig as any)?.token;
 
     if (copilotKey) {
-      this.providers.set('copilot', new CopilotProvider(copilotKey));
+      this.providers.set(AI_PROVIDERS.COPILOT, new CopilotProvider(copilotKey));
+    }
+  }
+
+  private getConfigSafely(key: string): any {
+    try {
+      return getConfig(key as any);
+    } catch {
+      return null;
     }
   }
 
@@ -137,7 +126,7 @@ export class AIProviderManager {
           try {
             const fallbackResponse = await this.providers.get(fallbackProvider)!.generateContent(prompt);
             return fallbackResponse.content;
-          } catch (fallbackError) {
+          } catch (_fallbackError) {
             // Continue to next fallback provider
             continue;
           }
@@ -158,10 +147,10 @@ export class AIProviderManager {
 
   private getProviderDisplayName(provider: AIProvider): string {
     const names: Record<AIProvider, string> = {
-      claude: 'Claude (Anthropic)',
-      chatgpt: 'ChatGPT (OpenAI)',
-      gemini: 'Gemini (Google)',
-      copilot: 'GitHub Copilot'
+      [AI_PROVIDERS.CLAUDE]: AI_PROVIDER_NAMES.CLAUDE,
+      [AI_PROVIDERS.CHATGPT]: AI_PROVIDER_NAMES.CHATGPT,
+      [AI_PROVIDERS.GEMINI]: AI_PROVIDER_NAMES.GEMINI,
+      [AI_PROVIDERS.COPILOT]: AI_PROVIDER_NAMES.COPILOT
     };
     return names[provider];
   }

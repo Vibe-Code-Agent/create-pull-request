@@ -1,6 +1,7 @@
 import inquirer from 'inquirer';
 import { AIProviderManager } from '../../services/ai-providers/manager.js';
 import { getConfig } from '../../utils/config.js';
+import { AI_PROVIDERS, AI_PROVIDER_NAMES } from '../../constants/index.js';
 
 // Mock dependencies
 jest.mock('inquirer');
@@ -24,7 +25,7 @@ describe('AIProviderManager', () => {
       switch (key) {
         case 'github':
           return { token: 'github-token' };
-        case 'copilot':
+        case AI_PROVIDERS.COPILOT:
           return { token: 'copilot-token' };
         case 'aiProviders':
           return {
@@ -49,10 +50,10 @@ describe('AIProviderManager', () => {
     it('should initialize with available providers from config', () => {
       manager = new AIProviderManager();
 
-      expect(manager.getAvailableProviders()).toContain('claude');
-      expect(manager.getAvailableProviders()).toContain('chatgpt');
-      expect(manager.getAvailableProviders()).toContain('gemini');
-      expect(manager.getAvailableProviders()).toContain('copilot');
+      expect(manager.getAvailableProviders()).toContain(AI_PROVIDERS.CLAUDE);
+      expect(manager.getAvailableProviders()).toContain(AI_PROVIDERS.CHATGPT);
+      expect(manager.getAvailableProviders()).toContain(AI_PROVIDERS.GEMINI);
+      expect(manager.getAvailableProviders()).toContain(AI_PROVIDERS.COPILOT);
     });
 
     it('should initialize with providers from environment variables', () => {
@@ -62,9 +63,9 @@ describe('AIProviderManager', () => {
 
       manager = new AIProviderManager();
 
-      expect(manager.getAvailableProviders()).toContain('claude');
-      expect(manager.getAvailableProviders()).toContain('chatgpt');
-      expect(manager.getAvailableProviders()).toContain('gemini');
+      expect(manager.getAvailableProviders()).toContain(AI_PROVIDERS.CLAUDE);
+      expect(manager.getAvailableProviders()).toContain(AI_PROVIDERS.CHATGPT);
+      expect(manager.getAvailableProviders()).toContain(AI_PROVIDERS.GEMINI);
     });
 
     it('should handle missing config gracefully', () => {
@@ -85,14 +86,14 @@ describe('AIProviderManager', () => {
 
     it('should return cached provider if already selected', async () => {
       // First selection
-      mockedInquirer.prompt.mockResolvedValue({ selectedProvider: 'claude' });
+      mockedInquirer.prompt.mockResolvedValue({ selectedProvider: AI_PROVIDERS.CLAUDE });
       const firstResult = await manager.selectProvider();
 
       // Second selection should return cached result
       const secondResult = await manager.selectProvider();
 
-      expect(firstResult).toBe('claude');
-      expect(secondResult).toBe('claude');
+      expect(firstResult).toBe(AI_PROVIDERS.CLAUDE);
+      expect(secondResult).toBe(AI_PROVIDERS.CLAUDE);
       expect(mockedInquirer.prompt).toHaveBeenCalledTimes(1);
     });
 
@@ -133,26 +134,26 @@ describe('AIProviderManager', () => {
 
       const result = await manager.selectProvider();
 
-      expect(result).toBe('claude');
+      expect(result).toBe(AI_PROVIDERS.CLAUDE);
       expect(mockedInquirer.prompt).not.toHaveBeenCalled();
     });
 
     it('should prompt user when multiple providers available', async () => {
-      mockedInquirer.prompt.mockResolvedValue({ selectedProvider: 'chatgpt' });
+      mockedInquirer.prompt.mockResolvedValue({ selectedProvider: AI_PROVIDERS.CHATGPT });
 
       const result = await manager.selectProvider();
 
-      expect(result).toBe('chatgpt');
+      expect(result).toBe(AI_PROVIDERS.CHATGPT);
       expect(mockedInquirer.prompt).toHaveBeenCalledWith([
         {
           type: 'list',
           name: 'selectedProvider',
           message: 'Multiple AI providers available. Please select one:',
           choices: expect.arrayContaining([
-            { name: 'Claude (Anthropic)', value: 'claude' },
-            { name: 'ChatGPT (OpenAI)', value: 'chatgpt' },
-            { name: 'Gemini (Google)', value: 'gemini' },
-            { name: 'GitHub Copilot', value: 'copilot' }
+            { name: AI_PROVIDER_NAMES.CLAUDE, value: AI_PROVIDERS.CLAUDE },
+            { name: AI_PROVIDER_NAMES.CHATGPT, value: AI_PROVIDERS.CHATGPT },
+            { name: AI_PROVIDER_NAMES.GEMINI, value: AI_PROVIDERS.GEMINI },
+            { name: AI_PROVIDER_NAMES.COPILOT, value: AI_PROVIDERS.COPILOT }
           ])
         }
       ]);
@@ -168,13 +169,13 @@ describe('AIProviderManager', () => {
       const mockProvider = {
         generateContent: jest.fn().mockResolvedValue({
           content: 'Generated content',
-          provider: 'claude'
+          provider: AI_PROVIDERS.CLAUDE
         })
       };
 
-      manager['providers'].set('claude', mockProvider as any);
+      manager['providers'].set(AI_PROVIDERS.CLAUDE, mockProvider as any);
 
-      const result = await manager.generateContent('test prompt', 'claude');
+      const result = await manager.generateContent('test prompt', AI_PROVIDERS.CLAUDE);
 
       expect(result).toBe('Generated content');
       expect(mockProvider.generateContent).toHaveBeenCalledWith('test prompt');
@@ -184,12 +185,12 @@ describe('AIProviderManager', () => {
       const mockProvider = {
         generateContent: jest.fn().mockResolvedValue({
           content: 'Generated content',
-          provider: 'claude'
+          provider: AI_PROVIDERS.CLAUDE
         })
       };
 
-      manager['providers'].set('claude', mockProvider as any);
-      manager['selectedProvider'] = 'claude';
+      manager['providers'].set(AI_PROVIDERS.CLAUDE, mockProvider as any);
+      manager['selectedProvider'] = AI_PROVIDERS.CLAUDE;
 
       const result = await manager.generateContent('test prompt');
 
@@ -210,15 +211,15 @@ describe('AIProviderManager', () => {
       const mockChatGPTProvider = {
         generateContent: jest.fn().mockResolvedValue({
           content: 'Generated content',
-          provider: 'chatgpt'
+          provider: AI_PROVIDERS.CHATGPT
         })
       };
 
-      manager['providers'].set('claude', mockClaudeProvider as any);
-      manager['providers'].set('chatgpt', mockChatGPTProvider as any);
+      manager['providers'].set(AI_PROVIDERS.CLAUDE, mockClaudeProvider as any);
+      manager['providers'].set(AI_PROVIDERS.CHATGPT, mockChatGPTProvider as any);
 
-      // Mock selectProvider to return 'claude' first
-      jest.spyOn(manager, 'selectProvider').mockResolvedValue('claude');
+      // Mock selectProvider to return AI_PROVIDERS.CLAUDE first
+      jest.spyOn(manager, 'selectProvider').mockResolvedValue(AI_PROVIDERS.CLAUDE);
 
       const result = await manager.generateContent('test prompt');
 
@@ -239,16 +240,16 @@ describe('AIProviderManager', () => {
       const mockGeminiProvider = {
         generateContent: jest.fn().mockResolvedValue({
           content: 'Generated content',
-          provider: 'gemini'
+          provider: AI_PROVIDERS.GEMINI
         })
       };
 
-      manager['providers'].set('claude', mockClaudeProvider as any);
-      manager['providers'].set('chatgpt', mockChatGPTProvider as any);
-      manager['providers'].set('gemini', mockGeminiProvider as any);
+      manager['providers'].set(AI_PROVIDERS.CLAUDE, mockClaudeProvider as any);
+      manager['providers'].set(AI_PROVIDERS.CHATGPT, mockChatGPTProvider as any);
+      manager['providers'].set(AI_PROVIDERS.GEMINI, mockGeminiProvider as any);
 
-      // Mock selectProvider to return 'claude' first
-      jest.spyOn(manager, 'selectProvider').mockResolvedValue('claude');
+      // Mock selectProvider to return AI_PROVIDERS.CLAUDE first
+      jest.spyOn(manager, 'selectProvider').mockResolvedValue(AI_PROVIDERS.CLAUDE);
 
       const result = await manager.generateContent('test prompt');
 
@@ -263,9 +264,9 @@ describe('AIProviderManager', () => {
         generateContent: jest.fn().mockRejectedValue(new Error('Provider failed'))
       };
 
-      manager['providers'].set('claude', mockProvider as any);
+      manager['providers'].set(AI_PROVIDERS.CLAUDE, mockProvider as any);
 
-      await expect(manager.generateContent('test prompt', 'claude'))
+      await expect(manager.generateContent('test prompt', AI_PROVIDERS.CLAUDE))
         .rejects.toThrow('Provider failed');
     });
   });
@@ -276,7 +277,7 @@ describe('AIProviderManager', () => {
 
       const providers = manager.getAvailableProviders();
 
-      expect(providers).toEqual(expect.arrayContaining(['claude', 'chatgpt', 'gemini', 'copilot']));
+      expect(providers).toEqual(expect.arrayContaining([AI_PROVIDERS.CLAUDE, AI_PROVIDERS.CHATGPT, AI_PROVIDERS.GEMINI, AI_PROVIDERS.COPILOT]));
     });
   });
 
@@ -286,7 +287,7 @@ describe('AIProviderManager', () => {
     });
 
     it('should return true for available provider', () => {
-      expect(manager.hasProvider('claude')).toBe(true);
+      expect(manager.hasProvider(AI_PROVIDERS.CLAUDE)).toBe(true);
     });
 
     it('should return false for unavailable provider', () => {
@@ -298,10 +299,10 @@ describe('AIProviderManager', () => {
     it('should return correct display names', () => {
       manager = new AIProviderManager();
 
-      expect(manager['getProviderDisplayName']('claude')).toBe('Claude (Anthropic)');
-      expect(manager['getProviderDisplayName']('chatgpt')).toBe('ChatGPT (OpenAI)');
-      expect(manager['getProviderDisplayName']('gemini')).toBe('Gemini (Google)');
-      expect(manager['getProviderDisplayName']('copilot')).toBe('GitHub Copilot');
+      expect(manager['getProviderDisplayName'](AI_PROVIDERS.CLAUDE)).toBe(AI_PROVIDER_NAMES.CLAUDE);
+      expect(manager['getProviderDisplayName'](AI_PROVIDERS.CHATGPT)).toBe(AI_PROVIDER_NAMES.CHATGPT);
+      expect(manager['getProviderDisplayName'](AI_PROVIDERS.GEMINI)).toBe(AI_PROVIDER_NAMES.GEMINI);
+      expect(manager['getProviderDisplayName'](AI_PROVIDERS.COPILOT)).toBe(AI_PROVIDER_NAMES.COPILOT);
     });
   });
 });

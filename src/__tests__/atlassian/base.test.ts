@@ -185,36 +185,6 @@ describe('BaseAtlassianService', () => {
         });
     });
 
-    describe('validateConnection', () => {
-        it('should validate connection successfully', async () => {
-            const mockUserResponse = {
-                data: {
-                    accountId: 'user123',
-                    displayName: 'Test User'
-                }
-            };
-
-            mockAxiosInstance.get.mockResolvedValue(mockUserResponse);
-
-            const result = await service.validateConnection();
-
-            expect(result).toBe(true);
-            expect(mockAxiosInstance.get).toHaveBeenCalledWith('/myself');
-        });
-
-        it('should throw error for authentication failures', async () => {
-            mockAxiosInstance.get.mockRejectedValue(new Error('Unauthorized'));
-
-            await expect(service.validateConnection()).rejects.toThrow('Unauthorized');
-        });
-
-        it('should throw error for network errors', async () => {
-            mockAxiosInstance.get.mockRejectedValue(new Error('Network Error'));
-
-            await expect(service.validateConnection()).rejects.toThrow('Network Error');
-        });
-    });
-
     describe('removeHtmlTagsManually', () => {
         it('should remove HTML tags correctly', () => {
             const htmlContent = '<h1>Title</h1><p>This is <strong>bold</strong> text.</p>';

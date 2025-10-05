@@ -22,8 +22,8 @@ export interface JiraTicket {
     confluencePages?: ConfluencePage[];
 }
 export declare class JiraService {
-    private jiraService;
-    private confluenceService;
+    private readonly jiraService;
+    private readonly confluenceService;
     constructor();
     getTicket(ticketKey: string, fetchConfluence?: boolean): Promise<JiraTicket>;
     /**
@@ -38,9 +38,5 @@ export declare class JiraService {
      * Get content of a specific Confluence page
      */
     getConfluencePageContent(pageUrl: string): Promise<ConfluencePage | null>;
-    /**
-     * Validate connection to Jira
-     */
-    validateConnection(): Promise<boolean>;
 }
 //# sourceMappingURL=atlassian-facade.d.ts.map

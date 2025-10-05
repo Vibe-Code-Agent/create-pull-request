@@ -28,8 +28,8 @@ export interface JiraTicket {
 }
 
 export class JiraService {
-  private jiraService: AtlassianJiraService;
-  private confluenceService: ConfluenceService | null = null;
+  private readonly jiraService: AtlassianJiraService;
+  private readonly confluenceService: ConfluenceService | null = null;
 
   constructor() {
     this.jiraService = new AtlassianJiraService();
@@ -83,12 +83,5 @@ export class JiraService {
       return null;
     }
     return this.confluenceService.getConfluencePageContent(pageUrl);
-  }
-
-  /**
-   * Validate connection to Jira
-   */
-  async validateConnection(): Promise<boolean> {
-    return this.jiraService.validateConnection();
   }
 }

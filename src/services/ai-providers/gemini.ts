@@ -1,9 +1,9 @@
-import { BaseAIProvider, AIProvider } from './base.js';
-import { API_URLS, DEFAULT_MODELS } from '../../constants/index.js';
+import { BaseAIProvider } from './base.js';
+import { API_URLS, DEFAULT_MODELS, AI_PROVIDERS } from '../../constants/index.js';
 
 export class GeminiProvider extends BaseAIProvider {
   constructor(apiKey: string, model?: string) {
-    super('gemini', apiKey, model);
+    super(AI_PROVIDERS.GEMINI, apiKey, model);
   }
 
   getDefaultModel(): string {
@@ -39,7 +39,7 @@ export class GeminiProvider extends BaseAIProvider {
   }
 
   extractContentFromResponse(response: any): string {
-    if (!response.candidates || !response.candidates[0]?.content?.parts?.[0]?.text) {
+    if (!response.candidates?.[0]?.content?.parts?.[0]?.text) {
       throw new Error('No content received from Gemini API');
     }
     return response.candidates[0].content.parts[0].text;

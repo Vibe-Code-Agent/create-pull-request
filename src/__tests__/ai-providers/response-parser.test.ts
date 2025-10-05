@@ -1,5 +1,6 @@
 import { ResponseParser } from '../../services/ai-providers/response-parser.js';
 import { AIProvider } from '../../services/ai-providers/base.js';
+import { AI_PROVIDERS } from '../../constants/index.js';
 
 describe('ResponseParser', () => {
     let parser: ResponseParser;
@@ -16,7 +17,7 @@ describe('ResponseParser', () => {
                 ]
             };
 
-            const result = parser.parseAIResponse(response, 'claude');
+            const result = parser.parseAIResponse(response, AI_PROVIDERS.CLAUDE);
 
             expect(result).toEqual({
                 title: 'Generated response content',
@@ -36,7 +37,7 @@ describe('ResponseParser', () => {
                 ]
             };
 
-            const result = parser.parseAIResponse(response, 'chatgpt');
+            const result = parser.parseAIResponse(response, AI_PROVIDERS.CHATGPT);
 
             expect(result).toEqual({
                 title: 'Generated response content',
@@ -58,7 +59,7 @@ describe('ResponseParser', () => {
                 ]
             };
 
-            const result = parser.parseAIResponse(response, 'gemini');
+            const result = parser.parseAIResponse(response, AI_PROVIDERS.GEMINI);
 
             expect(result).toEqual({
                 title: 'Generated response content',
@@ -78,7 +79,7 @@ describe('ResponseParser', () => {
                 ]
             };
 
-            const result = parser.parseAIResponse(response, 'copilot');
+            const result = parser.parseAIResponse(response, AI_PROVIDERS.COPILOT);
 
             expect(result).toEqual({
                 title: 'Generated response content',
@@ -103,7 +104,7 @@ describe('ResponseParser', () => {
                 ]
             };
 
-            const content = parser['extractContentFromResponse'](response, 'claude');
+            const content = parser['extractContentFromResponse'](response, AI_PROVIDERS.CLAUDE);
             expect(content).toBe('Claude response');
         });
 
@@ -112,7 +113,7 @@ describe('ResponseParser', () => {
                 content: []
             };
 
-            expect(() => parser['extractContentFromResponse'](response, 'claude'))
+            expect(() => parser['extractContentFromResponse'](response, AI_PROVIDERS.CLAUDE))
                 .toThrow('No content received from Claude API');
         });
 
@@ -127,7 +128,7 @@ describe('ResponseParser', () => {
                 ]
             };
 
-            const content = parser['extractContentFromResponse'](response, 'chatgpt');
+            const content = parser['extractContentFromResponse'](response, AI_PROVIDERS.CHATGPT);
             expect(content).toBe('ChatGPT response');
         });
 
@@ -136,7 +137,7 @@ describe('ResponseParser', () => {
                 choices: []
             };
 
-            expect(() => parser['extractContentFromResponse'](response, 'chatgpt'))
+            expect(() => parser['extractContentFromResponse'](response, AI_PROVIDERS.CHATGPT))
                 .toThrow('No content received from ChatGPT API');
         });
 
@@ -153,7 +154,7 @@ describe('ResponseParser', () => {
                 ]
             };
 
-            const content = parser['extractContentFromResponse'](response, 'gemini');
+            const content = parser['extractContentFromResponse'](response, AI_PROVIDERS.GEMINI);
             expect(content).toBe('Gemini response');
         });
 
@@ -162,7 +163,7 @@ describe('ResponseParser', () => {
                 candidates: []
             };
 
-            expect(() => parser['extractContentFromResponse'](response, 'gemini'))
+            expect(() => parser['extractContentFromResponse'](response, AI_PROVIDERS.GEMINI))
                 .toThrow('No content received from Gemini API');
         });
 
@@ -177,7 +178,7 @@ describe('ResponseParser', () => {
                 ]
             };
 
-            const content = parser['extractContentFromResponse'](response, 'copilot');
+            const content = parser['extractContentFromResponse'](response, AI_PROVIDERS.COPILOT);
             expect(content).toBe('Copilot response');
         });
 
@@ -186,7 +187,7 @@ describe('ResponseParser', () => {
                 choices: []
             };
 
-            expect(() => parser['extractContentFromResponse'](response, 'copilot'))
+            expect(() => parser['extractContentFromResponse'](response, AI_PROVIDERS.COPILOT))
                 .toThrow('No content received from Copilot API');
         });
     });

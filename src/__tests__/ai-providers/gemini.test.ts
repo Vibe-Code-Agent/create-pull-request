@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { GeminiProvider } from '../../services/ai-providers/gemini.js';
-import { DEFAULT_MODELS } from '../../constants/index.js';
+import { DEFAULT_MODELS, AI_PROVIDERS } from '../../constants/index.js';
 
 // Mock axios
 jest.mock('axios');
@@ -12,20 +12,20 @@ describe('GeminiProvider', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     mockAxiosInstance = {
       post: jest.fn(),
       defaults: { headers: { common: {} } }
     } as any;
 
     mockedAxios.create.mockReturnValue(mockAxiosInstance);
-    
+
     provider = new GeminiProvider('test-api-key', 'gemini-pro');
   });
 
   describe('constructor', () => {
     it('should initialize with correct configuration', () => {
-      expect(provider['provider']).toBe('gemini');
+      expect(provider['provider']).toBe(AI_PROVIDERS.GEMINI);
       expect(provider['apiKey']).toBe('test-api-key');
       expect(provider['model']).toBe('gemini-pro');
     });
@@ -70,7 +70,7 @@ describe('GeminiProvider', () => {
   describe('buildRequestBody', () => {
     it('should build correct request body', () => {
       const body = provider.buildRequestBody('test prompt');
-      
+
       expect(body).toEqual({
         contents: [
           {
@@ -102,7 +102,7 @@ describe('GeminiProvider', () => {
           }
         ]
       };
-      
+
       const content = provider.extractContentFromResponse(response);
       expect(content).toBe('Generated response');
     });
@@ -111,14 +111,14 @@ describe('GeminiProvider', () => {
       const response = {
         candidates: []
       };
-      
+
       expect(() => provider.extractContentFromResponse(response))
         .toThrow('No content received from Gemini API');
     });
 
     it('should throw error for missing candidates', () => {
       const response = {};
-      
+
       expect(() => provider.extractContentFromResponse(response))
         .toThrow('No content received from Gemini API');
     });
@@ -129,7 +129,7 @@ describe('GeminiProvider', () => {
           {}
         ]
       };
-      
+
       expect(() => provider.extractContentFromResponse(response))
         .toThrow('No content received from Gemini API');
     });
@@ -142,7 +142,7 @@ describe('GeminiProvider', () => {
           }
         ]
       };
-      
+
       expect(() => provider.extractContentFromResponse(response))
         .toThrow('No content received from Gemini API');
     });
@@ -163,14 +163,14 @@ describe('GeminiProvider', () => {
           ]
         }
       };
-      
+
       mockAxiosInstance.post.mockResolvedValue(mockResponse);
 
       const result = await provider.generateContent('test prompt');
 
       expect(result).toEqual({
         content: 'Generated content',
-        provider: 'gemini'
+        provider: AI_PROVIDERS.GEMINI
       });
 
       expect(mockAxiosInstance.post).toHaveBeenCalledWith(
@@ -194,4 +194,3 @@ describe('GeminiProvider', () => {
     });
   });
 });
-

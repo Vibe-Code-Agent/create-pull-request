@@ -1,4 +1,5 @@
 import { AIProvider } from './base.js';
+import { AI_PROVIDERS } from '../../constants/index.js';
 
 export interface GeneratedPRContent {
   title: string;
@@ -14,26 +15,26 @@ export class ResponseParser {
 
   private extractContentFromResponse(response: any, provider: AIProvider): string {
     switch (provider) {
-      case 'claude':
-        if (!response.content || !response.content[0]?.text) {
+      case AI_PROVIDERS.CLAUDE:
+        if (!response.content?.[0]?.text) {
           throw new Error('No content received from Claude API');
         }
         return response.content[0].text;
 
-      case 'chatgpt':
-        if (!response.choices || !response.choices[0]?.message?.content) {
+      case AI_PROVIDERS.CHATGPT:
+        if (!response.choices?.[0]?.message?.content) {
           throw new Error('No content received from ChatGPT API');
         }
         return response.choices[0].message.content;
 
-      case 'gemini':
-        if (!response.candidates || !response.candidates[0]?.content?.parts?.[0]?.text) {
+      case AI_PROVIDERS.GEMINI:
+        if (!response.candidates?.[0]?.content?.parts?.[0]?.text) {
           throw new Error('No content received from Gemini API');
         }
         return response.candidates[0].content.parts[0].text;
 
-      case 'copilot':
-        if (!response.choices || !response.choices[0]?.message?.content) {
+      case AI_PROVIDERS.COPILOT:
+        if (!response.choices?.[0]?.message?.content) {
           throw new Error('No content received from Copilot API');
         }
         return response.choices[0].message.content;
@@ -55,7 +56,7 @@ export class ResponseParser {
           body: parsed.description || parsed.body || content,
           summary: parsed.summary
         };
-      } catch (error) {
+      } catch (_error) {
         // If JSON parsing fails, fall back to text extraction
         return this.extractFromText(content);
       }
@@ -82,7 +83,7 @@ export class ResponseParser {
     cleaned = cleaned.trim();
 
     // Try to extract JSON from mixed content
-    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    const jsonMatch = /\{[\s\S]*\}/.exec(cleaned);
     if (jsonMatch) {
       cleaned = jsonMatch[0];
     }
@@ -110,7 +111,7 @@ export class ResponseParser {
     ];
 
     for (const pattern of titlePatterns) {
-      const match = content.match(pattern);
+      const match = pattern.exec(content);
       if (match && match[1]) {
         return match[1].trim();
       }
@@ -137,7 +138,7 @@ export class ResponseParser {
     ];
 
     for (const pattern of summaryPatterns) {
-      const match = content.match(pattern);
+      const match = pattern.exec(content);
       if (match && match[1]) {
         return match[1].trim();
       }

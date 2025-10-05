@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { ChatGPTProvider } from '../../services/ai-providers/chatgpt.js';
-import { DEFAULT_MODELS } from '../../constants/index.js';
+import { DEFAULT_MODELS, AI_PROVIDERS } from '../../constants/index.js';
 
 // Mock axios
 jest.mock('axios');
@@ -25,7 +25,7 @@ describe('ChatGPTProvider', () => {
 
   describe('constructor', () => {
     it('should initialize with correct configuration', () => {
-      expect(provider['provider']).toBe('chatgpt');
+      expect(provider['provider']).toBe(AI_PROVIDERS.CHATGPT);
       expect(provider['apiKey']).toBe('test-api-key');
       expect(provider['model']).toBe('gpt-4');
     });
@@ -151,7 +151,7 @@ describe('ChatGPTProvider', () => {
 
       expect(result).toEqual({
         content: 'Generated content',
-        provider: 'chatgpt'
+        provider: AI_PROVIDERS.CHATGPT
       });
 
       expect(mockAxiosInstance.post).toHaveBeenCalledWith(
