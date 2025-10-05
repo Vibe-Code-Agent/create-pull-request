@@ -15,6 +15,16 @@ export interface PromptBuilderOptions {
 }
 export declare class PromptBuilder {
     buildPrompt(options: PromptBuilderOptions, summary?: string): string;
+    private buildPromptHeader;
+    private buildJiraTicketSection;
+    private buildConfluencePagesSection;
+    private buildGitChangesSection;
+    private buildFileDetailsSection;
+    private buildFileDetail;
+    private buildFileLinks;
+    private buildDiffContentSection;
+    private buildTemplateAndSummarySection;
+    private buildInstructionsSection;
     private generateFileUrl;
     private generateLineUrl;
     private generateLineLinks;
