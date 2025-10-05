@@ -125,7 +125,7 @@ describe('JiraService', () => {
       });
       expect(mockAtlassianJiraService.getTicket).toHaveBeenCalledWith('PROJ-123');
       expect(mockAtlassianJiraService.getRemoteLinks).toHaveBeenCalledWith('PROJ-123');
-      expect(mockConfluenceService.getConfluencePages).toHaveBeenCalledWith('PROJ-123', mockRemoteLinks);
+      expect(mockConfluenceService.getConfluencePages).toHaveBeenCalledWith(mockRemoteLinks);
     });
 
     it('should not include confluencePages field when no pages found', async () => {
@@ -184,7 +184,7 @@ describe('JiraService', () => {
 
       expect(result).toEqual(mockPages);
       expect(mockAtlassianJiraService.getRemoteLinks).toHaveBeenCalledWith('PROJ-123');
-      expect(mockConfluenceService.getConfluencePages).toHaveBeenCalledWith('PROJ-123', mockRemoteLinks);
+      expect(mockConfluenceService.getConfluencePages).toHaveBeenCalledWith(mockRemoteLinks);
     });
 
     it('should return empty array when ConfluenceService not initialized', async () => {

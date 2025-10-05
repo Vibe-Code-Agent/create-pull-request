@@ -46,7 +46,7 @@ export class JiraService {
     let confluencePages: ConfluencePage[] = [];
     if (fetchConfluence && this.confluenceService) {
       const remoteLinks = await this.jiraService.getRemoteLinks(ticketKey);
-      confluencePages = await this.confluenceService.getConfluencePages(ticketKey, remoteLinks);
+      confluencePages = await this.confluenceService.getConfluencePages(remoteLinks);
     }
 
     // Return the ticket with Confluence pages if any
@@ -72,7 +72,7 @@ export class JiraService {
     }
 
     const remoteLinks = await this.jiraService.getRemoteLinks(ticketKey);
-    return await this.confluenceService.getConfluencePages(ticketKey, remoteLinks);
+    return await this.confluenceService.getConfluencePages(remoteLinks);
   }
 
   /**

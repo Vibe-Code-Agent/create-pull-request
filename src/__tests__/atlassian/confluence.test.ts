@@ -122,7 +122,7 @@ describe('ConfluenceService', () => {
                 .mockResolvedValueOnce(mockSearchResponse)
                 .mockResolvedValueOnce(mockTechSpecResponse);
 
-            const result = await confluenceService.getConfluencePages('PROJ-123', mockRemoteLinks);
+            const result = await confluenceService.getConfluencePages(mockRemoteLinks);
 
             expect(result).toHaveLength(2);
             expect(result[0]).toEqual({
@@ -140,13 +140,13 @@ describe('ConfluenceService', () => {
         });
 
         it('should return empty array when no remote links provided', async () => {
-            const result = await confluenceService.getConfluencePages('PROJ-123', []);
+            const result = await confluenceService.getConfluencePages([]);
 
             expect(result).toEqual([]);
         });
 
         it('should return empty array when remote links is not an array', async () => {
-            const result = await confluenceService.getConfluencePages('PROJ-123', null as any);
+            const result = await confluenceService.getConfluencePages(null as any);
 
             expect(result).toEqual([]);
         });
@@ -183,7 +183,7 @@ describe('ConfluenceService', () => {
 
             mockAxiosInstance.get.mockResolvedValue(mockPageResponse);
 
-            const result = await confluenceService.getConfluencePages('PROJ-123', mixedLinks);
+            const result = await confluenceService.getConfluencePages(mixedLinks);
 
             expect(result).toHaveLength(1);
             expect(result[0].title).toBe('Confluence Page');
@@ -212,7 +212,7 @@ describe('ConfluenceService', () => {
 
             mockAxiosInstance.get.mockResolvedValue(mockPageResponse);
 
-            const result = await confluenceService.getConfluencePages('PROJ-123', manyLinks);
+            const result = await confluenceService.getConfluencePages(manyLinks);
 
             // Should be limited to MAX_CONFLUENCE_PAGES_COUNT (5)
             expect(result.length).toBeLessThanOrEqual(5);
@@ -252,7 +252,7 @@ describe('ConfluenceService', () => {
                 .mockResolvedValueOnce(mockPageResponse)
                 .mockRejectedValueOnce(new Error('Page not found'));
 
-            const result = await confluenceService.getConfluencePages('PROJ-123', linksWithError);
+            const result = await confluenceService.getConfluencePages(linksWithError);
 
             expect(result).toHaveLength(1);
             expect(result[0].title).toBe('Valid Page');
@@ -261,7 +261,7 @@ describe('ConfluenceService', () => {
         it('should throw error for API errors', async () => {
             mockAxiosInstance.get.mockRejectedValue(new Error('API Error'));
 
-            await expect(confluenceService.getConfluencePages('PROJ-123', mockRemoteLinks)).rejects.toThrow('API Error');
+            await expect(confluenceService.getConfluencePages(mockRemoteLinks)).rejects.toThrow('API Error');
         });
     });
 
