@@ -32,6 +32,5 @@ export declare class GitHubService {
     createPullRequest(repo: GitHubRepo, pullRequest: PullRequest): Promise<any>;
     private validatePullRequestData;
     getCurrentBranch(): Promise<string>;
-    validateConnection(): Promise<boolean>;
 }
 //# sourceMappingURL=github.d.ts.map
