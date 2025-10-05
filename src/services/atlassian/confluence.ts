@@ -101,13 +101,4 @@ export class ConfluenceService extends BaseAtlassianService {
             url: pageUrl
         };
     }
-
-    /**
-     * Validate Confluence connection
-     */
-    async validateConnection(): Promise<boolean> {
-        // Try to access Confluence REST API
-        await this.client.get('/user/current');
-        return true;
-    }
 }

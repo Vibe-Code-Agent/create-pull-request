@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { CopilotProvider } from '../../services/ai-providers/copilot.js';
 import { getConfig } from '../../utils/config.js';
+import { AI_PROVIDERS } from '../../constants/index.js';
 
 // Mock dependencies
 jest.mock('axios');
@@ -38,7 +39,7 @@ describe('CopilotProvider', () => {
 
   describe('constructor', () => {
     it('should initialize with correct configuration', () => {
-      expect(provider['provider']).toBe('copilot');
+      expect(provider['provider']).toBe(AI_PROVIDERS.COPILOT);
       expect(provider['apiKey']).toBe('test-api-key');
       expect(provider['model']).toBe('copilot-chat');
     });
@@ -170,7 +171,7 @@ describe('CopilotProvider', () => {
 
       expect(result).toEqual({
         content: 'Generated content',
-        provider: 'copilot'
+        provider: AI_PROVIDERS.COPILOT
       });
 
       expect(mockAxiosInstance.post).toHaveBeenCalledWith(

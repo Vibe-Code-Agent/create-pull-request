@@ -207,6 +207,18 @@ describe('Spinner', () => {
       expect(() => spinner.stop()).not.toThrow();
       expect(spinner.isSpinning).toBe(false);
     });
+
+    it('should handle stopping when interval is null', () => {
+      // Start spinner to create interval
+      spinner.start('Test');
+      jest.advanceTimersByTime(80);
+
+      // Manually set interval to null to test edge case
+      (spinner as any)._interval = null;
+
+      expect(() => spinner.stop()).not.toThrow();
+      expect(spinner.isSpinning).toBe(false);
+    });
   });
 
   describe('succeed method', () => {
@@ -371,6 +383,18 @@ describe('Spinner', () => {
           .stop()
           .succeed('Success');
       }).not.toThrow();
+    });
+  });
+
+  describe('private methods', () => {
+    it('should not render when not spinning', () => {
+      // Test the private _render method when not spinning
+      mockWrite.mockClear();
+
+      // Call _render when not spinning (should return early)
+      (spinner as any)._render();
+
+      expect(mockWrite).not.toHaveBeenCalled();
     });
   });
 });

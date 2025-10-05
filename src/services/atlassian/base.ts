@@ -9,7 +9,7 @@ export interface AtlassianConfig {
 }
 
 export abstract class BaseAtlassianService {
-    protected client: AxiosInstance;
+    protected readonly client: AxiosInstance;
     protected readonly config: AtlassianConfig;
 
     constructor(configKey: keyof import('../../utils/config.js').EnvironmentConfig) {
@@ -48,14 +48,6 @@ export abstract class BaseAtlassianService {
             throw new Error(`${context} API error: ${error.response?.data?.errorMessages?.[0] || error.message}`);
         }
         throw error;
-    }
-
-    /**
-     * Validate connection to the service
-     */
-    async validateConnection(): Promise<boolean> {
-        await this.client.get('/myself');
-        return true;
     }
 
     /**

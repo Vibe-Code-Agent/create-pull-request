@@ -23,7 +23,7 @@ export interface GitChanges {
 }
 
 export class GitService {
-  private git: SimpleGit;
+  private readonly git: SimpleGit;
 
   constructor() {
     this.git = simpleGit();
@@ -147,7 +147,7 @@ export class GitService {
 
     for (const line of lines) {
       // Parse hunk headers (e.g., @@ -1,4 +1,6 @@)
-      const hunkMatch = line.match(/^@@\s+-(\d+)(?:,\d+)?\s+\+(\d+)(?:,\d+)?\s+@@/);
+      const hunkMatch = /^@@\s+-(\d+)(?:,\d+)?\s+\+(\d+)(?:,\d+)?\s+@@/.exec(line);
       if (hunkMatch) {
         currentOldLine = parseInt(hunkMatch[1], LIMITS.HUNK_HEADER_OFFSET) - 1;
         currentNewLine = parseInt(hunkMatch[2], LIMITS.HUNK_HEADER_OFFSET) - 1;

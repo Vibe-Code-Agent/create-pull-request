@@ -8,7 +8,6 @@ export declare class ResponseParser {
     parseAIResponse(response: any, provider: AIProvider): GeneratedPRContent;
     private extractContentFromResponse;
     private parseResponseContent;
-    private isValidJSON;
     private cleanJSONResponse;
     private extractFromText;
     private extractTitle;

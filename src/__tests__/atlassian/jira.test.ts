@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { JiraService, JiraTicket } from '../../services/atlassian/jira.js';
+import { JiraService } from '../../services/atlassian/jira.js';
 import { getConfig } from '../../utils/config.js';
 
 // Mock dependencies
@@ -469,17 +469,6 @@ describe('JiraService', () => {
             mockAxiosInstance.get.mockRejectedValue(error);
 
             await expect(jiraService.getRemoteLinks('PROJ-123')).rejects.toThrow('API Error');
-        });
-    });
-
-    describe('validateConnection', () => {
-        it('should delegate to parent validateConnection', async () => {
-            const mockValidateConnection = jest.fn().mockResolvedValue(true);
-            (jiraService as any).validateConnection = mockValidateConnection;
-
-            const result = await jiraService.validateConnection();
-
-            expect(result).toBe(true);
         });
     });
 });

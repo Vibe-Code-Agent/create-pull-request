@@ -3,13 +3,13 @@ import chalk from 'chalk';
 export class AppError extends Error {
   constructor(
     message: string,
-    public code?: string,
-    public statusCode?: number,
-    public isOperational = true
+    public readonly code?: string,
+    public readonly statusCode?: number,
+    public readonly isOperational = true
   ) {
     super(message);
     this.name = 'AppError';
-    
+
     // Maintains proper stack trace for where error was thrown (only available on V8)
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, AppError);
@@ -31,7 +31,7 @@ export function handleError(error: unknown): void {
   } else {
     console.error(chalk.red('❌ Unknown Error:'), String(error));
   }
-  
+
   // Exit with error code
   process.exit(1);
 }
@@ -190,9 +190,9 @@ export function formatErrorMessage(error: any): string {
 export function handleErrorWithPrefix(error: unknown, prefix: string = ''): never {
   const formattedMessage = formatErrorMessage(error);
   const logPrefix = prefix ? `${prefix} Error:` : 'Error:';
-  
+
   console.error(logPrefix, formattedMessage);
-  
+
   // Re-throw the original error to preserve stack trace and type
   if (error instanceof Error) {
     throw error;

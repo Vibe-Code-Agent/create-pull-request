@@ -34,14 +34,12 @@ describe('JiraService', () => {
     mockAtlassianJiraService = {
       getTicket: jest.fn(),
       hasConfluencePages: jest.fn(),
-      getRemoteLinks: jest.fn(),
-      validateConnection: jest.fn()
+      getRemoteLinks: jest.fn()
     } as any;
 
     mockConfluenceService = {
       getConfluencePages: jest.fn(),
-      getConfluencePageContent: jest.fn(),
-      validateConnection: jest.fn()
+      getConfluencePageContent: jest.fn()
     } as any;
 
     // Mock the constructors
@@ -219,17 +217,6 @@ describe('JiraService', () => {
       const result = await serviceWithoutConfluence.getConfluencePageContent('test-url');
 
       expect(result).toBeNull();
-    });
-  });
-
-  describe('validateConnection', () => {
-    it('should delegate to AtlassianJiraService', async () => {
-      mockAtlassianJiraService.validateConnection.mockResolvedValue(true);
-
-      const result = await jiraService.validateConnection();
-
-      expect(result).toBe(true);
-      expect(mockAtlassianJiraService.validateConnection).toHaveBeenCalled();
     });
   });
 });

@@ -1,7 +1,177 @@
-import { validateJiraTicket, validateGitHubUrl, validateEmail, sanitizeInput } from '../utils/validation';
+import {
+  validateJiraTicket,
+  validateGitHubUrl,
+  validateEmail,
+  sanitizeInput,
+  validateEnvironment,
+  getConfigValue,
+  extractJiraTicketFromBranch,
+  validateGitRepository
+} from '../utils/validation';
 import { REGEX_PATTERNS } from '../constants';
+import { validateConfig, getConfigValue as getConfigValueFromConfig } from '../utils/config';
+
+// Mock the config module
+jest.mock('../utils/config');
+const mockedValidateConfig = validateConfig as jest.MockedFunction<typeof validateConfig>;
+const mockedGetConfigValueFromConfig = getConfigValueFromConfig as jest.MockedFunction<typeof getConfigValueFromConfig>;
+
+// Mock execSync
+jest.mock('node:child_process', () => ({
+  execSync: jest.fn()
+}));
+import { execSync } from 'node:child_process';
+const mockedExecSync = execSync as jest.MockedFunction<typeof execSync>;
 
 describe('Validation Utils', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('validateEnvironment', () => {
+    it('should pass when config is valid', () => {
+      mockedValidateConfig.mockReturnValue(true);
+
+      expect(() => validateEnvironment()).not.toThrow();
+    });
+
+    it('should throw error when config is invalid', () => {
+      mockedValidateConfig.mockReturnValue(false);
+
+      expect(() => validateEnvironment()).toThrow(
+        'Missing required configuration. Please run "create-pr setup" to configure your credentials.'
+      );
+    });
+  });
+
+  describe('getConfigValue', () => {
+    beforeEach(() => {
+      // Mock process.env
+      process.env.TEST_VAR = 'test-value';
+    });
+
+    afterEach(() => {
+      delete process.env.TEST_VAR;
+    });
+
+    it('should map JIRA_BASE_URL to jira.baseUrl', () => {
+      mockedGetConfigValueFromConfig.mockReturnValue('https://company.atlassian.net');
+
+      const result = getConfigValue('JIRA_BASE_URL');
+
+      expect(result).toBe('https://company.atlassian.net');
+      expect(mockedGetConfigValueFromConfig).toHaveBeenCalledWith('jira', 'baseUrl');
+    });
+
+    it('should map JIRA_USERNAME to jira.username', () => {
+      mockedGetConfigValueFromConfig.mockReturnValue('user@company.com');
+
+      const result = getConfigValue('JIRA_USERNAME');
+
+      expect(result).toBe('user@company.com');
+      expect(mockedGetConfigValueFromConfig).toHaveBeenCalledWith('jira', 'username');
+    });
+
+    it('should map JIRA_API_TOKEN to jira.apiToken', () => {
+      mockedGetConfigValueFromConfig.mockReturnValue('api-token-123');
+
+      const result = getConfigValue('JIRA_API_TOKEN');
+
+      expect(result).toBe('api-token-123');
+      expect(mockedGetConfigValueFromConfig).toHaveBeenCalledWith('jira', 'apiToken');
+    });
+
+    it('should map GITHUB_TOKEN to github.token', () => {
+      mockedGetConfigValueFromConfig.mockReturnValue('github-token-123');
+
+      const result = getConfigValue('GITHUB_TOKEN');
+
+      expect(result).toBe('github-token-123');
+      expect(mockedGetConfigValueFromConfig).toHaveBeenCalledWith('github', 'token');
+    });
+
+    it('should map COPILOT_API_TOKEN to copilot.apiToken', () => {
+      mockedGetConfigValueFromConfig.mockReturnValue('copilot-token-123');
+
+      const result = getConfigValue('COPILOT_API_TOKEN');
+
+      expect(result).toBe('copilot-token-123');
+      expect(mockedGetConfigValueFromConfig).toHaveBeenCalledWith('copilot', 'apiToken');
+    });
+
+    it('should map DEFAULT_BRANCH to github.defaultBranch', () => {
+      mockedGetConfigValueFromConfig.mockReturnValue('main');
+
+      const result = getConfigValue('DEFAULT_BRANCH');
+
+      expect(result).toBe('main');
+      expect(mockedGetConfigValueFromConfig).toHaveBeenCalledWith('github', 'defaultBranch');
+    });
+
+    it('should map JIRA_PROJECT_KEY to jira.projectKey', () => {
+      mockedGetConfigValueFromConfig.mockReturnValue('PROJ');
+
+      const result = getConfigValue('JIRA_PROJECT_KEY');
+
+      expect(result).toBe('PROJ');
+      expect(mockedGetConfigValueFromConfig).toHaveBeenCalledWith('jira', 'projectKey');
+    });
+
+    it('should fall back to process.env for unknown keys', () => {
+      const result = getConfigValue('TEST_VAR');
+
+      expect(result).toBe('test-value');
+      expect(mockedGetConfigValueFromConfig).not.toHaveBeenCalled();
+    });
+
+    it('should return undefined when config value is falsy', () => {
+      mockedGetConfigValueFromConfig.mockReturnValue('');
+
+      const result = getConfigValue('JIRA_BASE_URL');
+
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe('extractJiraTicketFromBranch', () => {
+    it('should extract ticket from various branch formats', () => {
+      expect(extractJiraTicketFromBranch('ft/ET-123')).toBe('ET-123');
+      expect(extractJiraTicketFromBranch('ft-ET-123')).toBe('ET-123');
+      expect(extractJiraTicketFromBranch('feature_ET-123')).toBe('ET-123');
+      expect(extractJiraTicketFromBranch('ET-123-some-description')).toBe('ET-123');
+      expect(extractJiraTicketFromBranch('bugfix/PROJ-456/fix-issue')).toBe('PROJ-456');
+    });
+
+    it('should return null when no ticket found', () => {
+      expect(extractJiraTicketFromBranch('feature-branch')).toBeNull();
+      expect(extractJiraTicketFromBranch('main')).toBeNull();
+      expect(extractJiraTicketFromBranch('')).toBeNull();
+    });
+
+    it('should handle edge cases', () => {
+      expect(extractJiraTicketFromBranch('PROJ-123')).toBe('PROJ-123');
+      expect(extractJiraTicketFromBranch('proj-123')).toBe('PROJ-123'); // lowercase converted to uppercase
+    });
+  });
+
+  describe('validateGitRepository', () => {
+    it('should pass when in a git repository', () => {
+      mockedExecSync.mockImplementation(() => 'true');
+
+      expect(() => validateGitRepository()).not.toThrow();
+      expect(mockedExecSync).toHaveBeenCalledWith('git rev-parse --is-inside-work-tree', { stdio: 'ignore' });
+    });
+
+    it('should throw error when not in a git repository', () => {
+      mockedExecSync.mockImplementation(() => {
+        throw new Error('Not a git repository');
+      });
+
+      expect(() => validateGitRepository()).toThrow(
+        'Not in a git repository. Please run this command from within a git repository.'
+      );
+    });
+  });
   describe('validateJiraTicket', () => {
     it('should validate correct Jira ticket format', () => {
       expect(validateJiraTicket('PROJ-123')).toBe(true);

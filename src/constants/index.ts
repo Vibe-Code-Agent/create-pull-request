@@ -102,6 +102,22 @@ export const CONFLUENCE_ENDPOINTS = {
   SEARCH: '/content/search'
 } as const;
 
+// AI Provider Constants
+export const AI_PROVIDERS = {
+  CLAUDE: 'claude',
+  CHATGPT: 'chatgpt',
+  GEMINI: 'gemini',
+  COPILOT: 'copilot'
+} as const;
+
+// AI Provider Display Names
+export const AI_PROVIDER_NAMES = {
+  CLAUDE: 'Claude (Anthropic)',
+  CHATGPT: 'ChatGPT (OpenAI)',
+  GEMINI: 'Gemini (Google)',
+  COPILOT: 'GitHub Copilot'
+} as const;
+
 // System Constants
 export const SYSTEM = {
   EXECUTABLE_PERMISSIONS: '755',

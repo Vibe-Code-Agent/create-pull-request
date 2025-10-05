@@ -5,17 +5,13 @@ export interface AtlassianConfig {
     apiToken: string;
 }
 export declare abstract class BaseAtlassianService {
-    protected client: AxiosInstance;
+    protected readonly client: AxiosInstance;
     protected readonly config: AtlassianConfig;
     constructor(configKey: keyof import('../../utils/config.js').EnvironmentConfig);
     /**
      * Handle API errors with specific error messages
      */
     protected handleApiError(error: any, context: string): never;
-    /**
-     * Validate connection to the service
-     */
-    validateConnection(): Promise<boolean>;
     /**
      * Manually remove HTML tags without using regex to prevent ReDoS attacks
      * This approach is O(n) linear time and completely safe from backtracking

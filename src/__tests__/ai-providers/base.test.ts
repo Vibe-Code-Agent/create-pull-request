@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import { BaseAIProvider, AIProvider } from '../../services/ai-providers/base.js';
+import { AI_PROVIDERS } from '../../constants/index.js';
 
 // Mock axios
 jest.mock('axios');
@@ -8,7 +9,7 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 // Create a concrete implementation for testing
 class TestAIProvider extends BaseAIProvider {
   constructor(apiKey: string, model?: string) {
-    super('claude' as AIProvider, apiKey, model);
+    super(AI_PROVIDERS.CLAUDE as AIProvider, apiKey, model);
   }
 
   getDefaultModel(): string {
@@ -75,7 +76,7 @@ describe('BaseAIProvider', () => {
 
   describe('constructor', () => {
     it('should initialize with provided parameters', () => {
-      expect(provider['provider']).toBe('claude');
+      expect(provider['provider']).toBe(AI_PROVIDERS.CLAUDE);
       expect(provider['apiKey']).toBe('test-api-key');
       expect(provider['model']).toBe('custom-model');
     });
@@ -108,7 +109,7 @@ describe('BaseAIProvider', () => {
 
       expect(result).toEqual({
         content: 'Generated content',
-        provider: 'claude'
+        provider: AI_PROVIDERS.CLAUDE
       });
 
       expect(mockAxiosInstance.post).toHaveBeenCalledWith(

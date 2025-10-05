@@ -1,9 +1,17 @@
-import { 
-  handleErrorWithPrefix, 
-  formatErrorMessage, 
-  isAxiosError, 
+import {
+  handleErrorWithPrefix,
+  formatErrorMessage,
+  isAxiosError,
   extractErrorDetails,
-  createError
+  createError,
+  AppError,
+  handleError,
+  createErrorHandler,
+  createJiraError,
+  createGitHubError,
+  createGitError,
+  createValidationError,
+  ERROR_CODES
 } from '../utils/error-handler';
 
 // Mock console to test logging
@@ -16,6 +24,194 @@ describe('Error Handler Utils', () => {
 
   afterAll(() => {
     consoleSpy.mockRestore();
+  });
+
+  describe('AppError', () => {
+    it('should create AppError with message only', () => {
+      const error = new AppError('Test error');
+
+      expect(error.message).toBe('Test error');
+      expect(error.name).toBe('AppError');
+      expect(error.code).toBeUndefined();
+      expect(error.statusCode).toBeUndefined();
+      expect(error.isOperational).toBe(true);
+      expect(error).toBeInstanceOf(Error);
+    });
+
+    it('should create AppError with all parameters', () => {
+      const error = new AppError('Test error', 'TEST_CODE', 404, false);
+
+      expect(error.message).toBe('Test error');
+      expect(error.name).toBe('AppError');
+      expect(error.code).toBe('TEST_CODE');
+      expect(error.statusCode).toBe(404);
+      expect(error.isOperational).toBe(false);
+    });
+
+    it('should handle Error.captureStackTrace when available', () => {
+      const originalCaptureStackTrace = Error.captureStackTrace;
+      const mockCaptureStackTrace = jest.fn();
+
+      // Mock Error.captureStackTrace
+      Error.captureStackTrace = mockCaptureStackTrace;
+
+      const error = new AppError('Test error');
+
+      expect(mockCaptureStackTrace).toHaveBeenCalledWith(error, AppError);
+
+      // Restore original
+      Error.captureStackTrace = originalCaptureStackTrace;
+    });
+
+    it('should handle missing Error.captureStackTrace', () => {
+      const originalCaptureStackTrace = Error.captureStackTrace;
+
+      // Remove Error.captureStackTrace
+      delete (Error as any).captureStackTrace;
+
+      expect(() => new AppError('Test error')).not.toThrow();
+
+      // Restore original
+      Error.captureStackTrace = originalCaptureStackTrace;
+    });
+  });
+
+  describe('handleError', () => {
+    const originalExit = process.exit;
+    const mockExit = jest.fn() as any;
+
+    beforeEach(() => {
+      process.exit = mockExit;
+    });
+
+    afterEach(() => {
+      process.exit = originalExit;
+    });
+
+    it('should handle AppError with code', () => {
+      const error = new AppError('Test error', 'TEST_CODE');
+
+      handleError(error);
+
+      expect(consoleSpy).toHaveBeenCalledWith(expect.any(String), 'Test error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.any(String), 'TEST_CODE');
+      expect(mockExit).toHaveBeenCalledWith(1);
+    });
+
+    it('should handle AppError without code', () => {
+      const error = new AppError('Test error');
+
+      handleError(error);
+
+      expect(consoleSpy).toHaveBeenCalledWith(expect.any(String), 'Test error');
+      expect(consoleSpy).toHaveBeenCalledTimes(1);
+      expect(mockExit).toHaveBeenCalledWith(1);
+    });
+
+    it('should handle regular Error in development', () => {
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'development';
+
+      const error = new Error('Regular error');
+      error.stack = 'Error stack trace';
+
+      handleError(error);
+
+      expect(consoleSpy).toHaveBeenCalledWith(expect.any(String), 'Regular error');
+      expect(consoleSpy).toHaveBeenCalledWith(expect.any(String), 'Error stack trace');
+      expect(mockExit).toHaveBeenCalledWith(1);
+
+      process.env.NODE_ENV = originalEnv;
+    });
+
+    it('should handle regular Error in production', () => {
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
+      const error = new Error('Regular error');
+
+      handleError(error);
+
+      expect(consoleSpy).toHaveBeenCalledWith(expect.any(String), 'Regular error');
+      expect(consoleSpy).toHaveBeenCalledTimes(1);
+      expect(mockExit).toHaveBeenCalledWith(1);
+
+      process.env.NODE_ENV = originalEnv;
+    });
+
+    it('should handle unknown error types', () => {
+      handleError('String error');
+
+      expect(consoleSpy).toHaveBeenCalledWith(expect.any(String), 'String error');
+      expect(mockExit).toHaveBeenCalledWith(1);
+    });
+  });
+
+  describe('createErrorHandler', () => {
+    it('should create handler that wraps Error in AppError', () => {
+      const handler = createErrorHandler('Test Context');
+      const error = new Error('Original error');
+
+      expect(() => handler(error)).toThrow(AppError);
+
+      try {
+        handler(error);
+      } catch (thrownError) {
+        expect((thrownError as AppError).message).toBe('Test Context: Original error');
+        expect(thrownError).toBeInstanceOf(AppError);
+      }
+    });
+
+    it('should create handler that wraps non-Error in AppError', () => {
+      const handler = createErrorHandler('Test Context');
+
+      expect(() => handler('String error')).toThrow(AppError);
+
+      try {
+        handler('String error');
+      } catch (thrownError) {
+        expect((thrownError as AppError).message).toBe('Test Context: String error');
+        expect(thrownError).toBeInstanceOf(AppError);
+      }
+    });
+  });
+
+  describe('Error creation functions', () => {
+    it('should create Jira error', () => {
+      const error = createJiraError('Jira API failed', 500);
+
+      expect(error.message).toBe('Jira API failed');
+      expect(error.code).toBe(ERROR_CODES.JIRA_API_ERROR);
+      expect(error.statusCode).toBe(500);
+      expect(error).toBeInstanceOf(AppError);
+    });
+
+    it('should create GitHub error', () => {
+      const error = createGitHubError('GitHub API failed', 404);
+
+      expect(error.message).toBe('GitHub API failed');
+      expect(error.code).toBe(ERROR_CODES.GITHUB_API_ERROR);
+      expect(error.statusCode).toBe(404);
+      expect(error).toBeInstanceOf(AppError);
+    });
+
+    it('should create Git error', () => {
+      const error = createGitError('Git operation failed');
+
+      expect(error.message).toBe('Git operation failed');
+      expect(error.code).toBe(ERROR_CODES.GIT_ERROR);
+      expect(error.statusCode).toBeUndefined();
+      expect(error).toBeInstanceOf(AppError);
+    });
+
+    it('should create Validation error', () => {
+      const error = createValidationError('Validation failed');
+
+      expect(error.message).toBe('Validation failed');
+      expect(error.code).toBe(ERROR_CODES.VALIDATION_ERROR);
+      expect(error.statusCode).toBeUndefined();
+      expect(error).toBeInstanceOf(AppError);
+    });
   });
 
   describe('createError', () => {
@@ -233,6 +429,42 @@ describe('Error Handler Utils', () => {
       expect(formatErrorMessage(undefined)).toBe('Unknown error occurred');
       expect(formatErrorMessage('')).toBe('Unknown error occurred');
     });
+
+    it('should handle axios error with statusText but no responseData message', () => {
+      const axiosError = {
+        isAxiosError: true,
+        response: {
+          status: 500,
+          statusText: 'Internal Server Error',
+          data: {}
+        },
+        config: { url: '/api/test' },
+        message: 'Request failed'
+      };
+
+      const formatted = formatErrorMessage(axiosError);
+
+      expect(formatted).toContain('HTTP Error (500)');
+      expect(formatted).toContain('Internal Server Error');
+      expect(formatted).toContain('/api/test');
+    });
+
+    it('should handle axios error with no statusText and no responseData message', () => {
+      const axiosError = {
+        isAxiosError: true,
+        response: {
+          status: 500,
+          data: {}
+        },
+        config: { url: '/api/test' },
+        message: 'Request failed'
+      };
+
+      const formatted = formatErrorMessage(axiosError);
+
+      expect(formatted).toContain('HTTP Error (500)');
+      expect(formatted).toContain('/api/test');
+    });
   });
 
   describe('handleErrorWithPrefix', () => {
@@ -372,7 +604,7 @@ describe('Error Handler Utils', () => {
     });
 
     it('should preserve custom error properties', () => {
-      const customError = createError('Custom error', 'CUSTOM_CODE', { 
+      const customError = createError('Custom error', 'CUSTOM_CODE', {
         field: 'username',
         value: 'invalid'
       });

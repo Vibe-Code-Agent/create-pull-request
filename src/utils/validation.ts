@@ -46,7 +46,7 @@ export function extractJiraTicketFromBranch(branchName: string): string | null {
   // - feature_ET-123 -> ET-123
   // - ET-123-some-description -> ET-123
   // - bugfix/PROJ-456/fix-issue -> PROJ-456
-  const match = branchName.match(REGEX_PATTERNS.JIRA_TICKET_FROM_BRANCH);
+  const match = REGEX_PATTERNS.JIRA_TICKET_FROM_BRANCH.exec(branchName);
   return match ? match[1].toUpperCase() : null;
 }
 
