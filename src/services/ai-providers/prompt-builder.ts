@@ -26,7 +26,7 @@ export class PromptBuilder {
     prompt += this.buildFileDetailsSection(gitChanges, jiraTicket, repoInfo);
     prompt += this.buildDiffContentSection(diffContent);
     prompt += this.buildTemplateSection(template);
-    prompt += this.buildInstructionsSection(jiraTicket);
+    prompt += this.buildInstructionsSection(jiraTicket, template);
 
     return prompt;
   }
@@ -150,9 +150,25 @@ export class PromptBuilder {
     return prompt;
   }
 
-  private buildInstructionsSection(jiraTicket: JiraTicket): string {
+  private buildInstructionsSection(jiraTicket: JiraTicket, template?: PullRequestTemplate): string {
     let prompt = `\n## Instructions:\n`;
     prompt += `Please generate a comprehensive pull request description following these guidelines:\n\n`;
+    
+    // Template-specific instructions
+    if (template) {
+      prompt += `### 🎯 CRITICAL: Template Structure Requirements\n`;
+      prompt += `**YOU MUST STRICTLY FOLLOW THE PULL REQUEST TEMPLATE PROVIDED ABOVE.**\n\n`;
+      prompt += `Template Compliance Rules:\n`;
+      prompt += `1. **Use the EXACT section headings** from the template (e.g., ## Summary, ## Changes, etc.)\n`;
+      prompt += `2. **Follow the EXACT structure and order** of sections as defined in the template\n`;
+      prompt += `3. **Fill in ALL sections** that are present in the template - do not skip any\n`;
+      prompt += `4. **Preserve any markdown formatting** (headers, lists, emphasis) from the template\n`;
+      prompt += `5. **If the template has placeholders or examples**, replace them with actual content\n`;
+      prompt += `6. **Do not add extra sections** that are not in the template\n`;
+      prompt += `7. **Do not remove or rename sections** from the template\n`;
+      prompt += `8. The template structure is MANDATORY and takes precedence over any other formatting preferences\n\n`;
+      prompt += `⚠️ **Template sections must appear in the description field with their exact headings and structure.**\n\n`;
+    }
     
     prompt += `### Title Requirements:\n`;
     prompt += `- **MUST** start with the Jira ticket key: "${jiraTicket.key}"\n`;
@@ -170,6 +186,10 @@ export class PromptBuilder {
     prompt += `- Focus only on what was implemented, not on future steps\n\n`;
     
     prompt += `### Description Requirements:\n`;
+    if (template) {
+      prompt += `**IMPORTANT: The description MUST follow the template structure provided above.**\n`;
+      prompt += `Use the template sections and fill them with the following information:\n\n`;
+    }
     prompt += `1. **Overview**: Brief explanation of the changes and their purpose\n`;
     prompt += `2. **Jira Ticket Context**: Reference the ticket description and requirements\n`;
     prompt += `3. **File Changes Analysis**: For each modified file, provide:\n`;
@@ -185,9 +205,18 @@ export class PromptBuilder {
     prompt += `   - Example: [src/utils/auth.ts:L45-L67](https://github.com/.../auth.ts#L45-L67)\n`;
     prompt += `4. **Technical Details**: Explain the implementation approach\n`;
     prompt += `5. **Breaking Changes**: List any breaking changes or migration steps (if applicable)\n`;
-    prompt += `6. **Formatting**: **DO NOT** include any checklists (- [ ], - [x]) in the description\n\n`;
+    prompt += `6. **Formatting**: **DO NOT** include any checklists (- [ ], - [x]) in the description\n`;
+    if (template) {
+      prompt += `7. **Template Sections**: Map the above information to the appropriate sections in the template\n`;
+    }
+    prompt += `\n`;
     
     prompt += `### Critical Requirements:\n`;
+    if (template) {
+      prompt += `- **HIGHEST PRIORITY: Follow the template structure exactly as provided**\n`;
+      prompt += `- Use the exact section headings and order from the template\n`;
+      prompt += `- Fill all template sections - do not skip any\n`;
+    }
     prompt += `- Title MUST begin with "${jiraTicket.key}:"\n`;
     prompt += `- Summary MUST NOT include testing/verification steps or proposed changes\n`;
     prompt += `- **DO NOT include any checklists** (- [ ] or - [x]) anywhere in the description\n`;
@@ -207,7 +236,11 @@ export class PromptBuilder {
     prompt += `{\n`;
     prompt += `  "title": "${jiraTicket.key}: [Your descriptive title here]",\n`;
     prompt += `  "summary": "Brief 2-3 sentence summary of what was implemented and why (no testing steps)",\n`;
-    prompt += `  "description": "Comprehensive description with detailed file changes analysis"\n`;
+    if (template) {
+      prompt += `  "description": "MUST follow the template structure with exact section headings and order"\n`;
+    } else {
+      prompt += `  "description": "Comprehensive description with detailed file changes analysis"\n`;
+    }
     prompt += `}\n`;
     prompt += `\`\`\`\n`;
 
@@ -232,7 +265,8 @@ export class PromptBuilder {
   private getFileRelevanceDescription(file: FileChange, jiraTicket: JiraTicket): string {
     const fileName = file.file.toLowerCase();
     const ticketSummary = jiraTicket.summary.toLowerCase();
-    const ticketDescription = jiraTicket.description?.toLowerCase() || '';
+    // Ensure description is a string before calling toLowerCase()
+    const ticketDescription = (typeof jiraTicket.description === 'string' ? jiraTicket.description : '').toLowerCase();
 
     // Check for keyword matches
     const keywords = [
