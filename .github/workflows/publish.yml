@@ -21,16 +21,23 @@ on:
 
 jobs:
   publish:
+    name: Publish Package
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
 
     # Only run on main branch or tags
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+
+    outputs:
+      package_name: ${{ steps.package-info.outputs.package_name }}
+      package_version: ${{ steps.package-info.outputs.package_version }}
 
     steps:
       - name: 🔍 Checkout code
         uses: actions/checkout@v4
         with:
-          # Fetch all history for proper git operations
           fetch-depth: 0
           token: ${{ secrets.GH_TOKEN }}
 
@@ -57,6 +64,34 @@ jobs:
 
       - name: 📦 Install dependencies
         run: npm ci
+
+      - name: 📋 Get package information
+        id: package-info
+        run: |
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+
+          echo "package_name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+          echo "package_version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
+
+          echo "📦 Package: $PACKAGE_NAME"
+          echo "🏷️  Version: $PACKAGE_VERSION"
+
+      - name: 🔍 Check if version already exists
+        run: |
+          PACKAGE_NAME="${{ steps.package-info.outputs.package_name }}"
+          PACKAGE_VERSION="${{ steps.package-info.outputs.package_version }}"
+
+          echo "🔍 Checking if $PACKAGE_NAME@$PACKAGE_VERSION already exists on NPM..."
+
+          if npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version > /dev/null 2>&1; then
+            echo "❌ Version $PACKAGE_VERSION already exists on NPM!"
+            echo "📋 Please update the version in package.json before publishing"
+            echo "🔗 View on NPM: https://www.npmjs.com/package/$PACKAGE_NAME"
+            exit 1
+          else
+            echo "✅ Version $PACKAGE_VERSION is available for publishing"
+          fi
 
       - name: 🔍 Verify package integrity
         run: npm audit signatures
@@ -87,66 +122,89 @@ jobs:
           echo "✅ Build artifacts validated"
 
       - name: 🔒 Security audit
-        run: npm audit --audit-level=high
-        continue-on-error: true # Don't fail the workflow for audit issues
-
-      # For tag triggers: extract version from tag
-      - name: 📋 Extract version from tag
-        if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          TAG_VERSION=${GITHUB_REF#refs/tags/}
-          echo "NEW_VERSION=$TAG_VERSION" >> $GITHUB_ENV
-          echo "Publishing version: $TAG_VERSION"
+          echo "🔒 Running security audit..."
+          if npm audit --audit-level=high; then
+            echo "✅ No high-severity vulnerabilities found"
+          else
+            echo "⚠️ Security vulnerabilities detected"
+            echo "📋 Review the output above and consider fixing before publishing"
+          fi
+        continue-on-error: true
 
       - name: 🏷️ Create GitHub Release
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-        uses: actions/create-release@v1
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/}
+          PACKAGE_NAME="${{ steps.package-info.outputs.package_name }}"
+          PACKAGE_VERSION="${{ steps.package-info.outputs.package_version }}"
+
+          echo "🏷️ Creating GitHub release for $TAG_VERSION..."
+
+          # Determine if prerelease
+          PRERELEASE_FLAG=""
+          if [[ "$TAG_VERSION" =~ - ]]; then
+            PRERELEASE_FLAG="--prerelease"
+            echo "📋 Creating prerelease"
+          fi
+
+          gh release create "$TAG_VERSION" \
+            --title "Release $TAG_VERSION" \
+            --notes "## 🚀 What's New in $TAG_VERSION
+
+          ### Changes
+          - Auto-generated release from version tag
+          - See commit history for detailed changes
+
+          ### Installation
+          \`\`\`bash
+          npm install -g $PACKAGE_NAME@$PACKAGE_VERSION
+          \`\`\`
+
+          ### Usage
+          \`\`\`bash
+          create-pr create --jira YOUR-123
+          \`\`\`
+
+          For full documentation, see [README.md](https://github.com/${{ github.repository }}/blob/main/README.md)" \
+            $PRERELEASE_FLAG
+
+          echo "✅ GitHub release created"
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-        with:
-          tag_name: ${{ env.NEW_VERSION }}
-          release_name: Release ${{ env.NEW_VERSION }}
-          body: |
-            ## 🚀 What's New in ${{ env.NEW_VERSION }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
-            ### Changes
-            - Auto-generated release from version tag
-            - See commit history for detailed changes
-
-            ### Installation
-            ```bash
-            npm install -g publish-pull-request@${{ env.NEW_VERSION }}
-            ```
-
-            ### Usage
-            ```bash
-            create-pr create --jira YOUR-123
-            ```
-
-            For full documentation, see [README.md](https://github.com/${{ github.repository }}/blob/main/README.md)
-          draft: false
-          prerelease: ${{ contains(env.NEW_VERSION, '-') }}
-
-      # Dry run mode
       - name: 🧪 NPM Publish (Dry Run)
         if: github.event.inputs.dry_run == 'true'
         run: |
+          PACKAGE_NAME="${{ steps.package-info.outputs.package_name }}"
+          PACKAGE_VERSION="${{ steps.package-info.outputs.package_version }}"
+
           echo "🧪 Running in dry-run mode - no actual publish"
+          echo "📦 Would publish: $PACKAGE_NAME@$PACKAGE_VERSION"
+          echo ""
+
           npm publish --dry-run
+
+          echo ""
+          echo "✅ Dry run completed successfully"
+          echo "💡 Remove --dry-run to actually publish"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      # Actual publish
       - name: 🚀 Publish to NPM
         if: github.event.inputs.dry_run != 'true'
         run: |
+          PACKAGE_NAME="${{ steps.package-info.outputs.package_name }}"
+          PACKAGE_VERSION="${{ steps.package-info.outputs.package_version }}"
+
           echo "🚀 Publishing to NPM..."
-          echo "⚠️ Note: If you have 2FA enabled, use an Automation token or disable 2FA for publishing"
-          npm publish
+          echo "📦 Package: $PACKAGE_NAME@$PACKAGE_VERSION"
+          echo ""
 
-          PACKAGE_NAME=$(node -p "require('./package.json').name")
-          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          # Publish to NPM
+          npm publish --access public
 
+          echo ""
           echo "✅ Successfully published $PACKAGE_NAME@$PACKAGE_VERSION"
           echo "📦 Install with: npm install -g $PACKAGE_NAME@$PACKAGE_VERSION"
           echo "🔗 View on NPM: https://www.npmjs.com/package/$PACKAGE_NAME"
@@ -156,47 +214,113 @@ jobs:
       - name: 📊 Post-publish validation
         if: github.event.inputs.dry_run != 'true'
         run: |
-          PACKAGE_NAME=$(node -p "require('./package.json').name")
-          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          PACKAGE_NAME="${{ steps.package-info.outputs.package_name }}"
+          PACKAGE_VERSION="${{ steps.package-info.outputs.package_version }}"
 
-          echo "⏳ Waiting for NPM registry to sync..."
-          sleep 30
+          echo "⏳ Polling NPM registry for package availability..."
+          echo "📦 Package: $PACKAGE_NAME@$PACKAGE_VERSION"
 
-          # Verify package is available
-          if npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version > /dev/null 2>&1; then
-            echo "✅ Package successfully published and available on NPM"
+          # Polling configuration
+          MAX_ATTEMPTS=20
+          POLL_INTERVAL=5
+          ATTEMPT=0
+          PACKAGE_AVAILABLE=false
+
+          # Poll until package is available or max attempts reached
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            ELAPSED_TIME=$((ATTEMPT * POLL_INTERVAL))
+            
+            echo "📊 Attempt $ATTEMPT/$MAX_ATTEMPTS (${ELAPSED_TIME}s elapsed) - Checking package availability..."
+            
+            # Try to fetch package info from npm
+            if npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version > /dev/null 2>&1; then
+              echo "✅ Package is now available on NPM registry!"
+              echo "⏱️  Package became available after ${ELAPSED_TIME} seconds"
+              PACKAGE_AVAILABLE=true
+              break
+            else
+              echo "   ⏳ Package not yet available, waiting ${POLL_INTERVAL}s..."
+              
+              # Don't sleep on the last attempt
+              if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+                sleep $POLL_INTERVAL
+              fi
+            fi
+          done
+
+          # Final status
+          if [ "$PACKAGE_AVAILABLE" = true ]; then
+            echo ""
+            echo "🎉 Validation successful!"
+            echo "🔗 NPM: https://www.npmjs.com/package/$PACKAGE_NAME/v/$PACKAGE_VERSION"
           else
-            echo "⚠️ Package may still be syncing to NPM registry"
+            echo ""
+            echo "⚠️ Package not detected after $((MAX_ATTEMPTS * POLL_INTERVAL)) seconds"
+            echo "📋 This doesn't mean publishing failed - NPM sync can take longer"
+            echo "🔍 Manually verify: npm view $PACKAGE_NAME@$PACKAGE_VERSION"
+            echo "🔗 NPM: https://www.npmjs.com/package/$PACKAGE_NAME"
           fi
 
       - name: 💬 Success notification
-        if: success() && github.event.inputs.dry_run != 'true'
+        if: success()
         run: |
-          PACKAGE_NAME=$(node -p "require('./package.json').name")
-          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          PACKAGE_NAME="${{ steps.package-info.outputs.package_name }}"
+          PACKAGE_VERSION="${{ steps.package-info.outputs.package_version }}"
+          DRY_RUN="${{ github.event.inputs.dry_run }}"
 
-          echo "🎉 SUCCESS! Package published successfully"
-          echo ""
-          echo "📦 Package: $PACKAGE_NAME@$PACKAGE_VERSION"
-          echo "🔗 NPM: https://www.npmjs.com/package/$PACKAGE_NAME"
-          echo "📚 GitHub: https://github.com/${{ github.repository }}"
-          echo ""
-          echo "🚀 Users can now install with:"
-          echo "   npm install -g $PACKAGE_NAME@$PACKAGE_VERSION"
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "🎉 DRY RUN COMPLETED!"
+            echo ""
+            echo "📦 Package: $PACKAGE_NAME@$PACKAGE_VERSION"
+            echo "✅ All checks passed - ready for publishing"
+            echo ""
+            echo "💡 To actually publish, run without --dry-run flag"
+          else
+            echo "🎉 SUCCESS! Package published successfully"
+            echo ""
+            echo "📦 Package: $PACKAGE_NAME@$PACKAGE_VERSION"
+            echo "🔗 NPM: https://www.npmjs.com/package/$PACKAGE_NAME"
+            echo "📚 GitHub: https://github.com/${{ github.repository }}"
+            echo ""
+            echo "🚀 Users can now install with:"
+            echo "   npm install -g $PACKAGE_NAME@$PACKAGE_VERSION"
+          fi
 
   # Notify on failure
   notify_failure:
+    name: Failure Notification
     runs-on: ubuntu-latest
     needs: publish
     if: failure()
+
     steps:
       - name: 🚨 Failure notification
         run: |
-          echo "❌ Publishing failed!"
-          echo "Please check the logs above for details."
+          echo "❌ Publishing workflow failed!"
           echo ""
-          echo "Common issues:"
-          echo "1. NPM_TOKEN secret not set or invalid"
-          echo "2. Package version already exists"
-          echo "3. Tests or linting failures"
-          echo "4. Build errors"
+          echo "📋 Please check the logs above for details."
+          echo ""
+          echo "🔍 Common issues:"
+          echo ""
+          echo "1. **NPM_TOKEN not configured**"
+          echo "   - Check that NPM_TOKEN secret is set in repository settings"
+          echo "   - Ensure the token has publish permissions"
+          echo ""
+          echo "2. **Version already exists**"
+          echo "   - The version in package.json already exists on NPM"
+          echo "   - Update the version before publishing"
+          echo ""
+          echo "3. **Tests or linting failures**"
+          echo "   - Fix any failing tests or lint errors"
+          echo "   - Run 'npm test' and 'npm run lint' locally"
+          echo ""
+          echo "4. **Build errors**"
+          echo "   - Ensure 'npm run build' completes successfully"
+          echo "   - Check TypeScript compilation errors"
+          echo ""
+          echo "5. **Package integrity issues**"
+          echo "   - Review npm audit results"
+          echo "   - Fix security vulnerabilities if needed"
+          echo ""
+          echo "💡 For more help, check the workflow logs or contact the maintainers"
