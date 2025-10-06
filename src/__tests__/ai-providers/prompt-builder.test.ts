@@ -160,6 +160,27 @@ describe('PromptBuilder', () => {
             expect(prompt).toContain('```');
         });
 
+        it('should include strict template compliance instructions when template is provided', () => {
+            mockOptions.template = {
+                name: 'test-template.md',
+                content: '## Summary\n{{summary}}\n\n## Changes\n{{changes}}'
+            };
+
+            const prompt = promptBuilder.buildPrompt(mockOptions);
+
+            // Check for critical template instructions
+            expect(prompt).toContain('🎯 CRITICAL: Template Structure Requirements');
+            expect(prompt).toContain('YOU MUST STRICTLY FOLLOW THE PULL REQUEST TEMPLATE PROVIDED ABOVE');
+            expect(prompt).toContain('Template Compliance Rules:');
+            expect(prompt).toContain('Use the EXACT section headings');
+            expect(prompt).toContain('Follow the EXACT structure and order');
+            expect(prompt).toContain('Fill in ALL sections');
+            expect(prompt).toContain('Do not add extra sections');
+            expect(prompt).toContain('Do not remove or rename sections');
+            expect(prompt).toContain('HIGHEST PRIORITY: Follow the template structure exactly as provided');
+            expect(prompt).toContain('MUST follow the template structure with exact section headings and order');
+        });
+
         it('should include instructions for JSON response format', () => {
             const prompt = promptBuilder.buildPrompt(mockOptions);
 
