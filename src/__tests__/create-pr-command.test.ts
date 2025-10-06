@@ -1223,9 +1223,10 @@ describe('Create PR Command', () => {
       // Mock inquirer responses
       inquirer.default.prompt.mockClear();
       inquirer.default.prompt
-        .mockResolvedValueOnce({ includeConfluence: false });
+        .mockResolvedValueOnce({ includeConfluence: false })
+        .mockResolvedValueOnce({ retry: false }); // User chooses not to retry
 
-      await expect(createPullRequest(mockOptions)).rejects.toThrow('Failed to generate PR description after retries');
+      await expect(createPullRequest(mockOptions)).rejects.toThrow('Failed to generate PR description - AI service returned null or undefined');
     });
 
     it('should display summary in dry run mode when available', async () => {

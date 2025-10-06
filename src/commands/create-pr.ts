@@ -8,24 +8,6 @@ import { AIDescriptionGeneratorService } from '../services/ai-description-genera
 import { validateJiraTicket, validateGitRepository, extractJiraTicketFromBranch } from '../utils/validation.js';
 import { CONFIG } from '../constants/index.js';
 
-// Helper function interfaces
-
-interface GeneratedContent {
-  title: string;
-  body: string;
-  summary?: string;
-}
-
-interface PRCreationData {
-  title: string;
-  body: string;
-  summary?: string;
-  currentBranch: string;
-  baseBranch: string;
-  repo: any;
-  jiraTicket: string;
-}
-
 export interface CreatePROptions {
   jira?: string;
   base?: string;
@@ -34,258 +16,111 @@ export interface CreatePROptions {
   draft?: boolean;
 }
 
-// Helper functions for validation
-async function validateRepositoryAndBranch(gitService: GitService, baseBranch: string): Promise<void> {
-  await gitService.validateRepository();
-
-  const baseExists = await gitService.branchExists(baseBranch);
-  if (!baseExists) {
-    throw new Error(`Base branch '${baseBranch}' does not exist`);
-  }
+interface GeneratePRDescriptionParams {
+  aiDescriptionService: AIDescriptionGeneratorService;
+  spinner: ReturnType<typeof createSpinner>;
+  jiraTicket: any;
+  gitChanges: any;
+  template: any;
+  diffContent: string;
+  prTitle?: string;
+  repoInfo: {
+    owner: string;
+    repo: string;
+    currentBranch: string;
+  };
 }
 
-async function checkUncommittedChanges(gitService: GitService): Promise<boolean> {
-  const hasUncommitted = await gitService.hasUncommittedChanges();
-  if (!hasUncommitted) {
-    return true;
-  }
+interface GenerateOptions {
+  jiraTicket: any;
+  gitChanges: any;
+  template: any;
+  diffContent: string;
+  prTitle?: string;
+  repoInfo: {
+    owner: string;
+    repo: string;
+    currentBranch: string;
+  };
+}
 
-  const { proceed } = await inquirer.prompt([{
+/**
+ * Format error message from error object
+ */
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Unknown error';
+}
+
+/**
+ * Ask user if they want to retry after initial failure
+ */
+async function askForRetry(): Promise<boolean> {
+  const { retry } = await inquirer.prompt([{
     type: 'confirm',
-    name: 'proceed',
-    message: 'You have uncommitted changes. Do you want to proceed anyway?',
-    default: false
+    name: 'retry',
+    message: 'Would you like to retry generating the summary?',
+    default: true
   }]);
-
-  if (!proceed) {
-    console.log(chalk.yellow('❌ Aborting. Please commit or stash your changes first.'));
-    return false;
-  }
-  return true;
+  return retry;
 }
 
-function validateJiraTicketFormat(ticket: string): void {
-  if (!validateJiraTicket(ticket)) {
-    throw new Error(`Invalid Jira ticket format: ${ticket}. Expected format: PROJECT-123`);
-  }
-}
-
-// Helper functions for Jira ticket handling
-async function getJiraTicketFromUser(): Promise<string> {
-  const { ticket } = await inquirer.prompt([{
-    type: 'input',
-    name: 'ticket',
-    message: 'Enter Jira ticket ID (e.g., PROJ-123):',
-    validate: (input: string) => {
-      if (!input.trim()) return 'Jira ticket ID is required';
-      if (!validateJiraTicket(input.trim())) {
-        return 'Invalid Jira ticket format. Expected format: PROJECT-123';
-      }
-      return true;
-    }
+/**
+ * Ask user if they want to continue retrying after a failed attempt
+ */
+async function askToContinueRetry(attemptNumber: number, maxRetries: number): Promise<boolean> {
+  const { continueRetry } = await inquirer.prompt([{
+    type: 'confirm',
+    name: 'continueRetry',
+    message: `Retry attempt ${attemptNumber} of ${maxRetries} failed. Continue retrying?`,
+    default: true
   }]);
-  return ticket.trim().toUpperCase();
+  return continueRetry;
 }
 
-async function resolveJiraTicket(options: CreatePROptions, currentBranch: string, spinner: any): Promise<string> {
-  let jiraTicket = options.jira;
-
-  if (!jiraTicket) {
-    const extractedTicket = extractJiraTicketFromBranch(currentBranch);
-    if (extractedTicket) {
-      jiraTicket = extractedTicket;
-      console.log(chalk.green(`✅ Detected Jira ticket from branch name: ${jiraTicket}`));
-    }
-  }
-
-  if (!jiraTicket) {
-    spinner.stop();
-    jiraTicket = await getJiraTicketFromUser();
-    spinner.start('Analyzing repository and changes...');
-  }
-
-  validateJiraTicketFormat(jiraTicket);
-  return jiraTicket;
-}
-
-async function fetchJiraTicketWithConfluence(jiraService: JiraService, jiraTicket: string, spinner: any): Promise<any> {
-  spinner.text = 'Fetching Jira ticket information...';
-  let ticketInfo = await jiraService.getTicket(jiraTicket);
-  spinner.succeed('Jira ticket information fetched');
-
-  console.log(chalk.green(`🎫 Using Jira ticket: ${ticketInfo.key} - ${ticketInfo.summary}`));
-
-  spinner.start('Checking for linked Confluence pages...');
-  const hasConfluence = await jiraService.hasConfluencePages(jiraTicket);
-
-  if (hasConfluence) {
-    spinner.succeed('Found linked Confluence pages');
-    const { includeConfluence } = await inquirer.prompt([{
-      type: 'confirm',
-      name: 'includeConfluence',
-      message: 'Include Confluence page content in PR summary generation?',
-      default: false
-    }]);
-
-    if (includeConfluence) {
-      spinner.start('Fetching Confluence pages content...');
-      ticketInfo = await jiraService.getTicket(jiraTicket, true);
-      spinner.succeed(`Loaded ${ticketInfo.confluencePages?.length || 0} Confluence page(s)`);
-
-      if (ticketInfo.confluencePages && ticketInfo.confluencePages.length > 0) {
-        console.log(chalk.blue('📄 Confluence pages found:'));
-        for (const page of ticketInfo.confluencePages) {
-          console.log(chalk.blue(`   • ${page.title}`));
-        }
-      }
-    } else {
-      console.log(chalk.yellow('⏭️  Skipping Confluence content'));
-    }
-  } else {
-    spinner.succeed('No Confluence pages linked to this ticket');
-  }
-
-  return ticketInfo;
-}
-
-// Helper functions for PR template handling
-async function selectPRTemplate(githubService: GitHubService, spinner: any): Promise<any> {
-  spinner.start('Looking for pull request templates...');
-  const templates = await githubService.getPullRequestTemplates();
-  let selectedTemplate = templates.length > 0 ? templates[0] : undefined;
-
-  if (templates.length > 1) {
-    spinner.stop();
-    const { template } = await inquirer.prompt([{
-      type: 'list',
-      name: 'template',
-      message: 'Select a pull request template:',
-      choices: [
-        { name: 'No template', value: null },
-        ...templates.map(t => ({ name: t.name, value: t }))
-      ]
-    }]);
-    selectedTemplate = template;
-    spinner.start();
-  }
-
-  if (selectedTemplate) {
-    spinner.succeed(`Using PR template: ${selectedTemplate.name}`);
-  } else {
-    spinner.succeed('No PR template found, using default format');
-  }
-
-  return selectedTemplate;
-}
-
-// Helper functions for AI description generation
-async function generatePRDescriptionWithRetry(
+/**
+ * Generate PR description using AI service
+ */
+async function generateDescription(
   aiDescriptionService: AIDescriptionGeneratorService,
-  ticketInfo: any,
-  gitChanges: any,
-  selectedTemplate: any,
-  diffContent: string,
-  options: CreatePROptions,
-  repo: any,
-  currentBranch: string,
-  spinner: any
-): Promise<GeneratedContent> {
-  spinner.start('Generating pull request description with AI...');
-
-  try {
-    const generatedContent = await aiDescriptionService.generatePRDescription({
-      jiraTicket: ticketInfo,
-      gitChanges,
-      template: selectedTemplate,
-      diffContent,
-      prTitle: options.title,
-      repoInfo: {
-        owner: repo.owner,
-        repo: repo.repo,
-        currentBranch: currentBranch
-      }
-    });
-    spinner.succeed('Pull request description generated');
-    return generatedContent;
-  } catch (error) {
-    spinner.fail('Failed to generate pull request description');
-    console.log(chalk.red(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`));
-
-    const { retry } = await inquirer.prompt([{
-      type: 'confirm',
-      name: 'retry',
-      message: 'Would you like to retry generating the summary?',
-      default: true
-    }]);
-
-    if (!retry) {
-      throw error;
-    }
-
-    return await retryAIDescriptionGeneration(
-      aiDescriptionService,
-      ticketInfo,
-      gitChanges,
-      selectedTemplate,
-      diffContent,
-      options,
-      repo,
-      currentBranch,
-      spinner
-    );
+  options: GenerateOptions
+): Promise<any> {
+  const result = await aiDescriptionService.generatePRDescription(options);
+  
+  if (!result) {
+    throw new Error('Failed to generate PR description - AI service returned null or undefined');
   }
+  
+  return result;
 }
 
+/**
+ * Perform retry attempts to generate PR description
+ */
 async function retryAIDescriptionGeneration(
   aiDescriptionService: AIDescriptionGeneratorService,
-  ticketInfo: any,
-  gitChanges: any,
-  selectedTemplate: any,
-  diffContent: string,
-  options: CreatePROptions,
-  repo: any,
-  currentBranch: string,
-  spinner: any
-): Promise<GeneratedContent> {
-  let retryAttempt = 1;
-  const maxRetries = 3;
-
-  while (retryAttempt <= maxRetries) {
+  spinner: ReturnType<typeof createSpinner>,
+  options: GenerateOptions,
+  maxRetries: number
+): Promise<any> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      spinner.start(`Retrying pull request description generation (attempt ${retryAttempt}/${maxRetries})...`);
-      const generatedContent = await aiDescriptionService.generatePRDescription({
-        jiraTicket: ticketInfo,
-        gitChanges,
-        template: selectedTemplate,
-        diffContent,
-        prTitle: options.title,
-        repoInfo: {
-          owner: repo.owner,
-          repo: repo.repo,
-          currentBranch: currentBranch
-        }
-      });
+      spinner.start(`Retrying pull request description generation (attempt ${attempt}/${maxRetries})...`);
+      const content = await generateDescription(aiDescriptionService, options);
       spinner.succeed('Pull request description generated successfully');
-      return generatedContent;
+      return content;
     } catch (retryError) {
-      retryAttempt++;
-      spinner.fail(`Retry attempt ${retryAttempt - 1} failed`);
+      spinner.fail(`Retry attempt ${attempt} failed`);
 
-      if (retryAttempt <= maxRetries) {
-        console.log(chalk.yellow(`⚠️  Attempt ${retryAttempt - 1} failed: ${retryError instanceof Error ? retryError.message : 'Unknown error'}`));
+      const isLastAttempt = attempt === maxRetries;
+      if (isLastAttempt) {
+        console.log(chalk.red(`❌ All retry attempts failed. Last error: ${getErrorMessage(retryError)}`));
+        throw retryError;
+      }
 
-        const { continueRetry } = await inquirer.prompt([{
-          type: 'confirm',
-          name: 'continueRetry',
-          message: `Retry attempt ${retryAttempt - 1} of ${maxRetries} failed. Continue retrying?`,
-          default: true
-        }]);
-
-        if (!continueRetry) {
-          throw retryError;
-        }
-      } else {
-        console.log(chalk.red(`❌ All retry attempts failed. Last error: ${retryError instanceof Error ? retryError.message : 'Unknown error'}`));
+      console.log(chalk.yellow(`⚠️  Attempt ${attempt} failed: ${getErrorMessage(retryError)}`));
+      const shouldContinue = await askToContinueRetry(attempt, maxRetries);
+      
+      if (!shouldContinue) {
         throw retryError;
       }
     }
@@ -294,144 +129,36 @@ async function retryAIDescriptionGeneration(
   throw new Error('Failed to generate PR description after retries');
 }
 
-// Helper functions for user interaction
-function displayGeneratedContent(generatedContent: GeneratedContent | null): void {
-  if (!generatedContent) {
-    throw new Error('Failed to generate PR description after retries');
-  }
+/**
+ * Generate PR description with automatic retry capability
+ */
+async function generatePRDescriptionWithRetry(params: GeneratePRDescriptionParams): Promise<any> {
+  const { aiDescriptionService, spinner, jiraTicket, gitChanges, template, diffContent, prTitle, repoInfo } = params;
+  const maxRetries = 3;
 
-  console.log(chalk.blue('\n📝 Generated Pull Request:'));
-
-  if (generatedContent.summary) {
-    console.log(chalk.bold('Summary:'));
-    console.log(chalk.cyan(generatedContent.summary));
-    console.log();
-  }
-
-  console.log(chalk.bold('Title:'));
-  console.log(generatedContent.title);
-  console.log(chalk.bold('\nDescription:'));
-  console.log(generatedContent.body);
-}
-
-async function getUserAction(): Promise<string> {
-  const { action } = await inquirer.prompt([{
-    type: 'list',
-    name: 'action',
-    message: 'What would you like to do?',
-    choices: [
-      { name: '✅ Create the pull request', value: 'create' },
-      { name: '✏️  Edit the description', value: 'edit' },
-      { name: '❌ Cancel', value: 'cancel' }
-    ]
-  }]);
-  return action;
-}
-
-async function editPRContent(generatedContent: GeneratedContent): Promise<GeneratedContent> {
-  const editPrompts: any[] = [
-    {
-      type: 'input',
-      name: 'editedTitle',
-      message: 'Enter pull request title:',
-      default: generatedContent.title
-    }
-  ];
-
-  if (generatedContent.summary) {
-    editPrompts.push({
-      type: 'input',
-      name: 'editedSummary',
-      message: 'Edit pull request summary:',
-      default: generatedContent.summary || ''
-    });
-  }
-
-  editPrompts.push({
-    type: 'editor',
-    name: 'editedBody',
-    message: 'Edit pull request description:',
-    default: generatedContent.body
-  });
-
-  const editedContent = await inquirer.prompt(editPrompts);
-
-  return {
-    title: editedContent.editedTitle,
-    body: editedContent.editedBody,
-    summary: editedContent.editedSummary !== undefined ? editedContent.editedSummary : generatedContent.summary
+  const generateOptions: GenerateOptions = {
+    jiraTicket,
+    gitChanges,
+    template,
+    diffContent,
+    prTitle,
+    repoInfo
   };
-}
 
-// Helper functions for PR creation
+  try {
+    const content = await generateDescription(aiDescriptionService, generateOptions);
+    spinner.succeed('Pull request description generated');
+    return content;
+  } catch (error) {
+    spinner.fail('Failed to generate pull request description');
+    console.log(chalk.red(`❌ Error: ${getErrorMessage(error)}`));
 
-function applyFallbacks(data: PRCreationData): PRCreationData {
-  const result = { ...data };
+    const shouldRetry = await askForRetry();
+    if (!shouldRetry) {
+      throw error;
+    }
 
-  if (!result.title || result.title.trim() === '') {
-    result.title = `${data.jiraTicket}: Auto-generated PR title`;
-    console.log(chalk.yellow('⚠️  Warning: Using fallback title as AI did not generate a valid title'));
-  }
-
-  if (!result.body || result.body.trim() === '') {
-    result.body = 'Auto-generated PR description';
-    console.log(chalk.yellow('⚠️  Warning: Using fallback body as AI did not generate a valid description'));
-  }
-
-  return result;
-}
-
-function displayDryRun(data: PRCreationData, options: CreatePROptions): void {
-  console.log(chalk.blue('\n🔍 Dry Run - Pull Request Preview:'));
-  console.log(chalk.bold('Repository:'), `${data.repo.owner}/${data.repo.repo}`);
-  console.log(chalk.bold('From:'), data.currentBranch);
-  console.log(chalk.bold('To:'), data.baseBranch);
-  console.log(chalk.bold('Title:'), data.title);
-  if (data.summary) {
-    console.log(chalk.bold('Summary:'), data.summary);
-  }
-  console.log(chalk.bold('Draft:'), options.draft ? 'Yes' : 'No');
-  console.log(chalk.bold('Body:'), data.body);
-  console.log(chalk.green('\n✅ Dry run completed. No pull request was created.'));
-}
-
-async function createOrUpdatePR(
-  githubService: GitHubService,
-  gitService: GitService,
-  data: PRCreationData,
-  options: CreatePROptions,
-  spinner: any
-): Promise<void> {
-  spinner.start('Ensuring branch is pushed to remote...');
-  await gitService.pushCurrentBranch();
-
-  spinner.start('Creating or updating pull request on GitHub...');
-
-  const result = await githubService.createOrUpdatePullRequest(data.repo, {
-    title: data.title.trim(),
-    body: data.body.trim(),
-    head: data.currentBranch.trim(),
-    base: data.baseBranch.trim(),
-    draft: options.draft
-  });
-
-  const pullRequest = result.data;
-  const isUpdate = result.isUpdate;
-  const draftText = options.draft ? ' draft' : '';
-  const actionText = isUpdate ? 'updated' : 'created';
-
-  spinner.succeed(`Pull request${draftText} ${actionText} successfully!`);
-
-  console.log(chalk.green(`\n🎉${options.draft ? ' Draft' : ''} Pull Request ${isUpdate ? 'Updated' : 'Created'}:`));
-  console.log(chalk.bold('URL:'), pullRequest.html_url);
-  console.log(chalk.bold('Number:'), `#${pullRequest.number}`);
-  console.log(chalk.bold('Title:'), pullRequest.title);
-
-  if (isUpdate) {
-    console.log(chalk.blue('🔄 Note: Updated existing pull request for this branch'));
-  }
-  if (options.draft) {
-    console.log(chalk.yellow('📝 Note: This is a draft pull request'));
+    return await retryAIDescriptionGeneration(aiDescriptionService, spinner, generateOptions, maxRetries);
   }
 }
 
@@ -439,30 +166,120 @@ export async function createPullRequest(options: CreatePROptions): Promise<void>
   const spinner = createSpinner();
 
   try {
+    // Validate git repository
+    validateGitRepository();
+
     // Initialize services
     const jiraService = new JiraService();
     const githubService = new GitHubService();
     const gitService = new GitService();
     const aiDescriptionService = new AIDescriptionGeneratorService();
 
-    // Validate repository and check for uncommitted changes
-    validateGitRepository();
-    const canProceed = await checkUncommittedChanges(gitService);
-    if (!canProceed) return;
+    // Validate git repository
+    await gitService.validateRepository();
 
-    // Get current branch and resolve Jira ticket
+    // Check for uncommitted changes
+    const hasUncommitted = await gitService.hasUncommittedChanges();
+    if (hasUncommitted) {
+      const { proceed } = await inquirer.prompt([{
+        type: 'confirm',
+        name: 'proceed',
+        message: 'You have uncommitted changes. Do you want to proceed anyway?',
+        default: false
+      }]);
+
+      if (!proceed) {
+        console.log(chalk.yellow('❌ Aborting. Please commit or stash your changes first.'));
+        return;
+      }
+    }
+
+    // Get current branch first to potentially extract Jira ticket from it
     spinner.start('Analyzing repository and changes...');
     const currentBranch = await gitService.getCurrentBranch();
-    const jiraTicket = await resolveJiraTicket(options, currentBranch, spinner);
 
-    // Fetch Jira ticket information with Confluence handling
-    const ticketInfo = await fetchJiraTicketWithConfluence(jiraService, jiraTicket, spinner);
+    // Get Jira ticket - try to extract from branch name if not provided
+    let jiraTicket = options.jira;
+    if (!jiraTicket) {
+      // Try to extract Jira ticket ID from branch name
+      const extractedTicket = extractJiraTicketFromBranch(currentBranch);
+      if (extractedTicket) {
+        jiraTicket = extractedTicket;
+        console.log(chalk.green(`✅ Detected Jira ticket from branch name: ${jiraTicket}`));
+      }
+    }
 
-    // Validate repository and branch
+    // If still no ticket, prompt user
+    if (!jiraTicket) {
+      spinner.stop();
+      const { ticket } = await inquirer.prompt([{
+        type: 'input',
+        name: 'ticket',
+        message: 'Enter Jira ticket ID (e.g., PROJ-123):',
+        validate: (input: string) => {
+          if (!input.trim()) return 'Jira ticket ID is required';
+          if (!validateJiraTicket(input.trim())) {
+            return 'Invalid Jira ticket format. Expected format: PROJECT-123';
+          }
+          return true;
+        }
+      }]);
+      jiraTicket = ticket.trim().toUpperCase();
+      spinner.start('Analyzing repository and changes...');
+    }
+
+    if (!validateJiraTicket(jiraTicket!)) {
+      throw new Error(`Invalid Jira ticket format: ${jiraTicket}. Expected format: PROJECT-123`);
+    }
+
+    // Fetch Jira ticket information (without Confluence pages initially)
+    spinner.text = 'Fetching Jira ticket information...';
+    let ticketInfo = await jiraService.getTicket(jiraTicket!);
+    spinner.succeed('Jira ticket information fetched');
+
+    console.log(chalk.green(`🎫 Using Jira ticket: ${ticketInfo.key} - ${ticketInfo.summary}`));
+
+    // Check for Confluence pages and ask user if they want to include them
+    spinner.start('Checking for linked Confluence pages...');
+    const hasConfluence = await jiraService.hasConfluencePages(jiraTicket!);
+
+    if (hasConfluence) {
+      spinner.succeed('Found linked Confluence pages');
+      const { includeConfluence } = await inquirer.prompt([{
+        type: 'confirm',
+        name: 'includeConfluence',
+        message: 'Include Confluence page content in PR summary generation?',
+        default: false
+      }]);
+
+      if (includeConfluence) {
+        spinner.start('Fetching Confluence pages content...');
+        ticketInfo = await jiraService.getTicket(jiraTicket!, true);
+        spinner.succeed(`Loaded ${ticketInfo.confluencePages?.length || 0} Confluence page(s)`);
+
+        if (ticketInfo.confluencePages && ticketInfo.confluencePages.length > 0) {
+          console.log(chalk.blue('📄 Confluence pages found:'));
+          for (const page of ticketInfo.confluencePages) {
+            console.log(chalk.blue(`   • ${page.title}`));
+          }
+        }
+      } else {
+        console.log(chalk.yellow('⏭️  Skipping Confluence content'));
+      }
+    } else {
+      spinner.succeed('No Confluence pages linked to this ticket');
+    }
+
+    spinner.start('Analyzing repository and changes...');
     const baseBranch = options.base || CONFIG.DEFAULT_BRANCH;
-    await validateRepositoryAndBranch(gitService, baseBranch);
 
-    // Get git changes and repository info
+    // Validate base branch exists
+    const baseExists = await gitService.branchExists(baseBranch);
+    if (!baseExists) {
+      throw new Error(`Base branch '${baseBranch}' does not exist`);
+    }
+
+    // Get git changes with detailed diff content for enhanced PR description
     const gitChanges = await gitService.getChanges(baseBranch, true);
     const repo = await githubService.getCurrentRepo();
     spinner.succeed(`Repository: ${repo.owner}/${repo.repo}, Branch: ${currentBranch}`);
@@ -476,72 +293,193 @@ export async function createPullRequest(options: CreatePROptions): Promise<void>
     console.log(`   Insertions: +${gitChanges.totalInsertions}`);
     console.log(`   Deletions: -${gitChanges.totalDeletions}`);
 
-    // Select PR template
-    const selectedTemplate = await selectPRTemplate(githubService, spinner);
+    // Get PR templates
+    spinner.start('Looking for pull request templates...');
+    const templates = await githubService.getPullRequestTemplates();
+    let selectedTemplate = templates.length > 0 ? templates[0] : undefined;
 
-    // Get diff content and generate PR description
+    if (templates.length > 1) {
+      spinner.stop();
+      const { template } = await inquirer.prompt([{
+        type: 'list',
+        name: 'template',
+        message: 'Select a pull request template:',
+        choices: [
+          { name: 'No template', value: null },
+          ...templates.map(t => ({ name: t.name, value: t }))
+        ]
+      }]);
+      selectedTemplate = template;
+      spinner.start();
+    }
+
+    if (selectedTemplate) {
+      spinner.succeed(`Using PR template: ${selectedTemplate.name}`);
+    } else {
+      spinner.succeed('No PR template found, using default format');
+    }
+
+    // Get diff content for better context
     spinner.start('Analyzing code changes...');
     const diffContent = await gitService.getDiffContent(baseBranch, 500);
     spinner.succeed('Code analysis complete');
 
-    const generatedContent = await generatePRDescriptionWithRetry(
+    // Generate PR description using AI with retry capability
+    spinner.start('Generating pull request description with AI...');
+    const generatedContent = await generatePRDescriptionWithRetry({
       aiDescriptionService,
-      ticketInfo,
+      spinner,
+      jiraTicket: ticketInfo,
       gitChanges,
-      selectedTemplate,
+      template: selectedTemplate,
       diffContent,
-      options,
-      repo,
-      currentBranch,
-      spinner
-    );
+      prTitle: options.title,
+      repoInfo: {
+        owner: repo.owner,
+        repo: repo.repo,
+        currentBranch: currentBranch
+      }
+    });
 
-    // Display generated content and get user action
-    displayGeneratedContent(generatedContent);
-    const action = await getUserAction();
+    // Show generated content for review
+    console.log(chalk.blue('\n📝 Generated Pull Request:'));
+
+    // Display summary if available
+    if (generatedContent.summary) {
+      console.log(chalk.bold('Summary:'));
+      console.log(chalk.cyan(generatedContent.summary));
+      console.log();
+    }
+
+    console.log(chalk.bold('Title:'));
+    console.log(generatedContent.title);
+    console.log(chalk.bold('\nDescription:'));
+    console.log(generatedContent.body);
+
+    // Ask for user confirmation
+    const { action } = await inquirer.prompt([{
+      type: 'list',
+      name: 'action',
+      message: 'What would you like to do?',
+      choices: [
+        { name: '✅ Create the pull request', value: 'create' },
+        { name: '✏️  Edit the description', value: 'edit' },
+        { name: '❌ Cancel', value: 'cancel' }
+      ]
+    }]);
 
     if (action === 'cancel') {
       console.log(chalk.yellow('❌ Pull request creation cancelled.'));
       return;
     }
 
-    // Handle editing if requested
-    let finalContent = generatedContent;
-    if (action === 'edit') {
-      finalContent = await editPRContent(generatedContent);
-    }
+    let finalTitle = generatedContent.title;
+    let finalBody = generatedContent.body;
+    let finalSummary = generatedContent.summary;
 
-    // Debug logging
+    // Debug: Log what AI generated
     console.log(chalk.gray('\n🔍 Debug - AI Generated Content:'));
-    console.log(chalk.gray(`Title: "${finalContent.title}"`));
-    console.log(chalk.gray(`Summary: "${finalContent.summary}"`));
-    console.log(chalk.gray(`Body length: ${finalContent.body?.length || 0} characters`));
+    console.log(chalk.gray(`Title: "${generatedContent.title}"`));
+    console.log(chalk.gray(`Summary: "${generatedContent.summary}"`));
+    console.log(chalk.gray(`Body length: ${generatedContent.body?.length || 0} characters`));
 
-    // Validate branches are not empty
-    if (!currentBranch || currentBranch.trim() === '') {
-      throw new Error('Current branch cannot be empty');
+    if (action === 'edit') {
+      const editPrompts: any[] = [
+        {
+          type: 'input',
+          name: 'editedTitle',
+          message: 'Enter pull request title:',
+          default: finalTitle
+        }
+      ];
+
+      // Add summary editing if summary exists
+      if (generatedContent.summary) {
+        editPrompts.push({
+          type: 'input',
+          name: 'editedSummary',
+          message: 'Edit pull request summary:',
+          default: finalSummary || ''
+        });
+      }
+
+      editPrompts.push({
+        type: 'editor',
+        name: 'editedBody',
+        message: 'Edit pull request description:',
+        default: finalBody
+      });
+
+      const editedContent = await inquirer.prompt(editPrompts);
+
+      finalTitle = editedContent.editedTitle;
+      finalBody = editedContent.editedBody;
+      finalSummary = editedContent.editedSummary ?? finalSummary;
     }
-    if (!baseBranch || baseBranch.trim() === '') {
-      throw new Error('Base branch cannot be empty');
-    }
 
-    // Prepare PR creation data
-    const prData: PRCreationData = {
-      title: finalContent.title,
-      body: finalContent.body,
-      summary: finalContent.summary,
-      currentBranch,
-      baseBranch,
-      repo,
-      jiraTicket
-    };
-
-    // Handle dry run or actual PR creation
+    // Create pull request or show dry run
     if (options.dryRun) {
-      displayDryRun(prData, options);
+      console.log(chalk.blue('\n🔍 Dry Run - Pull Request Preview:'));
+      console.log(chalk.bold('Repository:'), `${repo.owner}/${repo.repo}`);
+      console.log(chalk.bold('From:'), currentBranch);
+      console.log(chalk.bold('To:'), baseBranch);
+      console.log(chalk.bold('Title:'), finalTitle);
+      if (finalSummary) {
+        console.log(chalk.bold('Summary:'), finalSummary);
+      }
+      console.log(chalk.bold('Draft:'), options.draft ? 'Yes' : 'No');
+      console.log(chalk.bold('Body:'), finalBody);
+      console.log(chalk.green('\n✅ Dry run completed. No pull request was created.'));
     } else {
-      const validatedData = applyFallbacks(prData);
-      await createOrUpdatePR(githubService, gitService, validatedData, options, spinner);
+      // Final validation before creating PR - provide fallbacks only if needed
+      if (!finalTitle || finalTitle.trim() === '') {
+        finalTitle = `${jiraTicket}: Auto-generated PR title`;
+        console.log(chalk.yellow('⚠️  Warning: Using fallback title as AI did not generate a valid title'));
+      }
+      if (!finalBody || finalBody.trim() === '') {
+        finalBody = 'Auto-generated PR description';
+        console.log(chalk.yellow('⚠️  Warning: Using fallback body as AI did not generate a valid description'));
+      }
+      if (!currentBranch || currentBranch.trim() === '') {
+        throw new Error('Current branch cannot be empty');
+      }
+      if (!baseBranch || baseBranch.trim() === '') {
+        throw new Error('Base branch cannot be empty');
+      }
+
+      spinner.start('Creating or updating pull request on GitHub...');
+
+      // Ensure current branch is pushed to remote
+      spinner.start('Ensuring branch is pushed to remote...');
+      await gitService.pushCurrentBranch();
+
+      spinner.start('Creating or updating pull request on GitHub...');
+
+      const result = await githubService.createOrUpdatePullRequest(repo, {
+        title: finalTitle.trim(),
+        body: finalBody.trim(),
+        head: currentBranch.trim(),
+        base: baseBranch.trim(),
+        draft: options.draft
+      });
+
+      const pullRequest = result.data;
+      const isUpdate = result.isUpdate;
+      const draftText = options.draft ? ' draft' : '';
+      const actionText = isUpdate ? 'updated' : 'created';
+
+      spinner.succeed(`Pull request${draftText} ${actionText} successfully!`);
+
+      console.log(chalk.green(`\n🎉${options.draft ? ' Draft' : ''} Pull Request ${isUpdate ? 'Updated' : 'Created'}:`));
+      console.log(chalk.bold('URL:'), pullRequest.html_url);
+      console.log(chalk.bold('Number:'), `#${pullRequest.number}`);
+      console.log(chalk.bold('Title:'), pullRequest.title);
+      if (isUpdate) {
+        console.log(chalk.blue('🔄 Note: Updated existing pull request for this branch'));
+      }
+      if (options.draft) {
+        console.log(chalk.yellow('📝 Note: This is a draft pull request'));
+      }
     }
 
   } catch (error) {
