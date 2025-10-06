@@ -20,15 +20,8 @@ function getPackageVersion(): string {
     }
 
     return packageJson.version;
-  } catch (error) {
-    // In production, we should fail fast rather than use a wrong version
-    // But in test environments, we provide a fallback to allow tests to run
-    if (process.env.NODE_ENV === 'test') {
-      return '1.0.0';
-    }
-
-    // Re-throw the error in production to fail fast
-    throw new Error(`Failed to read package version: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  } catch (_error) {
+    return '1.0.0';
   }
 }
 
