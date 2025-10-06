@@ -19,6 +19,7 @@ describe('PromptBuilder', () => {
                 reporter: 'Jane Doe',
                 created: '2023-01-01T00:00:00.000Z',
                 updated: '2023-01-02T00:00:00.000Z',
+                url: 'https://company.atlassian.net/browse/PROJ-123',
                 parentTicket: null
             },
             gitChanges: {
@@ -55,8 +56,7 @@ describe('PromptBuilder', () => {
             const prompt = promptBuilder.buildPrompt(mockOptions);
 
             expect(prompt).toContain('## Jira Ticket Information:');
-            expect(prompt).toContain('**Ticket**: PROJ-123');
-            expect(prompt).toContain('**Summary**: Feature implementation');
+            expect(prompt).toContain('**Jira Ticket**: [PROJ-123](https://company.atlassian.net/browse/PROJ-123) - Feature implementation');
             expect(prompt).toContain('**Type**: Story');
             expect(prompt).toContain('**Status**: In Progress');
             expect(prompt).toContain('**Assignee**: John Doe');
@@ -68,12 +68,13 @@ describe('PromptBuilder', () => {
             mockOptions.jiraTicket.parentTicket = {
                 key: 'PROJ-100',
                 summary: 'Parent feature',
-                issueType: 'Epic'
+                issueType: 'Epic',
+                url: 'https://company.atlassian.net/browse/PROJ-100'
             };
 
             const prompt = promptBuilder.buildPrompt(mockOptions);
 
-            expect(prompt).toContain('**Parent Ticket**: PROJ-100 - Parent feature');
+            expect(prompt).toContain('**Parent Ticket**: [PROJ-100](https://company.atlassian.net/browse/PROJ-100) - Parent feature');
         });
 
         it('should include Confluence pages when available', () => {
@@ -159,15 +160,6 @@ describe('PromptBuilder', () => {
             expect(prompt).toContain('```');
         });
 
-        it('should include summary when provided', () => {
-            const summary = 'This is a test summary of the changes';
-
-            const prompt = promptBuilder.buildPrompt(mockOptions, summary);
-
-            expect(prompt).toContain('## AI-Generated Summary:');
-            expect(prompt).toContain('This is a test summary of the changes');
-        });
-
         it('should include instructions for JSON response format', () => {
             const prompt = promptBuilder.buildPrompt(mockOptions);
 
@@ -175,9 +167,54 @@ describe('PromptBuilder', () => {
             expect(prompt).toContain('Please generate a comprehensive pull request description');
             expect(prompt).toContain('Format your response as JSON with the following structure:');
             expect(prompt).toContain('```json');
-            expect(prompt).toContain('"title": "Clear and descriptive PR title"');
-            expect(prompt).toContain('"description": "Detailed description of changes"');
-            expect(prompt).toContain('"summary": "Brief summary of the changes"');
+            expect(prompt).toContain('"title": "PROJ-123: [Your descriptive title here]"');
+            expect(prompt).toContain('"summary": "Brief 2-3 sentence summary of what was implemented and why (no testing steps)"');
+            expect(prompt).toContain('"description": "Comprehensive description with detailed file changes analysis"');
+        });
+
+        it('should include title requirements with Jira ticket key', () => {
+            const prompt = promptBuilder.buildPrompt(mockOptions);
+
+            expect(prompt).toContain('### Title Requirements:');
+            expect(prompt).toContain('**MUST** start with the Jira ticket key: "PROJ-123"');
+            expect(prompt).toContain('Format: "PROJ-123: [Clear, descriptive title summarizing the change]"');
+        });
+
+        it('should include detailed file changes requirements', () => {
+            const prompt = promptBuilder.buildPrompt(mockOptions);
+
+            expect(prompt).toContain('### Description Requirements:');
+            expect(prompt).toContain('**File Changes Analysis**');
+            expect(prompt).toContain('**MUST include URLs to specific line changes**');
+            expect(prompt).toContain('Link to the exact lines that were modified, not just the file');
+            expect(prompt).toContain('What was changed in the file');
+            expect(prompt).toContain('Why this change was necessary');
+            expect(prompt).toContain('How it relates to the Jira ticket description');
+            expect(prompt).toContain('Format: Use markdown links like [filename:L123-L145](URL) for line-specific changes');
+            expect(prompt).toContain('Example: [src/utils/auth.ts:L45-L67](https://github.com/.../auth.ts#L45-L67)');
+        });
+
+        it('should include critical requirements section', () => {
+            const prompt = promptBuilder.buildPrompt(mockOptions);
+
+            expect(prompt).toContain('### Critical Requirements:');
+            expect(prompt).toContain('Title MUST begin with "PROJ-123:"');
+            expect(prompt).toContain('Summary MUST NOT include testing/verification steps or proposed changes');
+            expect(prompt).toContain('File changes MUST include URLs to specific line changes (not just file URLs)');
+            expect(prompt).toContain('Use line-specific URLs from the context (e.g., file.ts#L10-L20)');
+            expect(prompt).toContain('File changes MUST be explained in detail, not just listed');
+            expect(prompt).toContain('Use markdown links [filename:L10-L20](URL) when referencing specific code changes');
+            expect(prompt).toContain('Changes MUST match and reference the Jira ticket description');
+        });
+
+        it('should include summary requirements without testing steps', () => {
+            const prompt = promptBuilder.buildPrompt(mockOptions);
+
+            expect(prompt).toContain('### Summary Requirements:');
+            expect(prompt).toContain('Provide a concise overview of what was changed and why');
+            expect(prompt).toContain('**DO NOT** include testing steps, verification steps, or proposed changes');
+            expect(prompt).toContain('**DO NOT** include instructions on how to test or verify the changes');
+            expect(prompt).toContain('Focus only on what was implemented, not on future steps');
         });
     });
 

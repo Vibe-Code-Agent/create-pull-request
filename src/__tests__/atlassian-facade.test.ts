@@ -80,6 +80,7 @@ describe('JiraService', () => {
       reporter: 'Jane Doe',
       created: '2023-01-01T00:00:00.000Z',
       updated: '2023-01-02T00:00:00.000Z',
+      url: 'https://company.atlassian.net/browse/PROJ-123',
       parentTicket: null
     };
 

@@ -9,10 +9,12 @@ export interface JiraTicket {
     reporter: string;
     created: string;
     updated: string;
+    url: string;
     parentTicket?: {
         key: string;
         summary: string;
         issueType: string;
+        url: string;
     } | null;
 }
 export declare class JiraService extends BaseAtlassianService {
@@ -22,6 +24,10 @@ export declare class JiraService extends BaseAtlassianService {
      * Fetch parent ticket information if it exists and is not an Epic
      */
     private fetchParentTicket;
+    /**
+     * Build the Jira ticket URL
+     */
+    private buildJiraTicketUrl;
     /**
      * Build the JiraTicket object from the fetched data
      */

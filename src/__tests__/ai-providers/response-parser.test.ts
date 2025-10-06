@@ -1,6 +1,4 @@
 import { ResponseParser } from '../../services/ai-providers/response-parser.js';
-import { AIProvider } from '../../services/ai-providers/base.js';
-import { AI_PROVIDERS } from '../../constants/index.js';
 
 describe('ResponseParser', () => {
     let parser: ResponseParser;
@@ -10,14 +8,12 @@ describe('ResponseParser', () => {
     });
 
     describe('parseAIResponse', () => {
-        it('should parse Claude response correctly', () => {
+        it('should parse AI response correctly', () => {
             const response = {
-                content: [
-                    { text: 'Generated response content' }
-                ]
+                content: 'Generated response content'
             };
 
-            const result = parser.parseAIResponse(response, AI_PROVIDERS.CLAUDE);
+            const result = parser.parseAIResponse(response);
 
             expect(result).toEqual({
                 title: 'Generated response content',
@@ -26,169 +22,61 @@ describe('ResponseParser', () => {
             });
         });
 
-        it('should parse OpenAI response correctly', () => {
+        it('should handle JSON response', () => {
             const response = {
-                choices: [
-                    {
-                        message: {
-                            content: 'Generated response content'
-                        }
-                    }
-                ]
+                content: '{"title": "Test Title", "description": "Test Description", "summary": "Test Summary"}'
             };
 
-            const result = parser.parseAIResponse(response, AI_PROVIDERS.OPENAI);
+            const result = parser.parseAIResponse(response);
 
             expect(result).toEqual({
-                title: 'Generated response content',
-                body: 'Generated response content',
-                summary: 'Generated response content'
+                title: 'Test Title',
+                body: 'Test Description',
+                summary: 'Test Summary'
             });
         });
 
-        it('should parse Gemini response correctly', () => {
-            const response = {
-                candidates: [
-                    {
-                        content: {
-                            parts: [
-                                { text: 'Generated response content' }
-                            ]
-                        }
-                    }
-                ]
-            };
+        it('should throw error when content is missing', () => {
+            const response = {};
 
-            const result = parser.parseAIResponse(response, AI_PROVIDERS.GEMINI);
-
-            expect(result).toEqual({
-                title: 'Generated response content',
-                body: 'Generated response content',
-                summary: 'Generated response content'
-            });
-        });
-
-        it('should parse Copilot response correctly', () => {
-            const response = {
-                choices: [
-                    {
-                        message: {
-                            content: 'Generated response content'
-                        }
-                    }
-                ]
-            };
-
-            const result = parser.parseAIResponse(response, AI_PROVIDERS.COPILOT);
-
-            expect(result).toEqual({
-                title: 'Generated response content',
-                body: 'Generated response content',
-                summary: 'Generated response content'
-            });
-        });
-
-        it('should throw error for unknown provider', () => {
-            const response = { content: 'test' };
-
-            expect(() => parser.parseAIResponse(response, 'unknown' as AIProvider))
-                .toThrow('Unknown provider: unknown');
+            expect(() => parser.parseAIResponse(response))
+                .toThrow('No content received from AI provider');
         });
     });
 
     describe('extractContentFromResponse', () => {
-        it('should extract content from Claude response', () => {
+        it('should extract content from valid response', () => {
             const response = {
-                content: [
-                    { text: 'Claude response' }
-                ]
+                content: 'AI provider response'
             };
 
-            const content = parser['extractContentFromResponse'](response, AI_PROVIDERS.CLAUDE);
-            expect(content).toBe('Claude response');
+            const content = parser['extractContentFromResponse'](response);
+            expect(content).toBe('AI provider response');
         });
 
-        it('should throw error for invalid Claude response', () => {
-            const response = {
-                content: []
-            };
+        it('should throw error when content is missing', () => {
+            const response = {};
 
-            expect(() => parser['extractContentFromResponse'](response, AI_PROVIDERS.CLAUDE))
-                .toThrow('No content received from Claude API');
+            expect(() => parser['extractContentFromResponse'](response))
+                .toThrow('No content received from AI provider');
         });
 
-        it('should extract content from OpenAI response', () => {
+        it('should throw error when content is null', () => {
             const response = {
-                choices: [
-                    {
-                        message: {
-                            content: 'OpenAI response'
-                        }
-                    }
-                ]
+                content: null
             };
 
-            const content = parser['extractContentFromResponse'](response, AI_PROVIDERS.OPENAI);
-            expect(content).toBe('OpenAI response');
+            expect(() => parser['extractContentFromResponse'](response))
+                .toThrow('No content received from AI provider');
         });
 
-        it('should throw error for invalid OpenAI response', () => {
+        it('should throw error when content is undefined', () => {
             const response = {
-                choices: []
+                content: undefined
             };
 
-            expect(() => parser['extractContentFromResponse'](response, AI_PROVIDERS.OPENAI))
-                .toThrow('No content received from OpenAI API');
-        });
-
-        it('should extract content from Gemini response', () => {
-            const response = {
-                candidates: [
-                    {
-                        content: {
-                            parts: [
-                                { text: 'Gemini response' }
-                            ]
-                        }
-                    }
-                ]
-            };
-
-            const content = parser['extractContentFromResponse'](response, AI_PROVIDERS.GEMINI);
-            expect(content).toBe('Gemini response');
-        });
-
-        it('should throw error for invalid Gemini response', () => {
-            const response = {
-                candidates: []
-            };
-
-            expect(() => parser['extractContentFromResponse'](response, AI_PROVIDERS.GEMINI))
-                .toThrow('No content received from Gemini API');
-        });
-
-        it('should extract content from Copilot response', () => {
-            const response = {
-                choices: [
-                    {
-                        message: {
-                            content: 'Copilot response'
-                        }
-                    }
-                ]
-            };
-
-            const content = parser['extractContentFromResponse'](response, AI_PROVIDERS.COPILOT);
-            expect(content).toBe('Copilot response');
-        });
-
-        it('should throw error for invalid Copilot response', () => {
-            const response = {
-                choices: []
-            };
-
-            expect(() => parser['extractContentFromResponse'](response, AI_PROVIDERS.COPILOT))
-                .toThrow('No content received from Copilot API');
+            expect(() => parser['extractContentFromResponse'](response))
+                .toThrow('No content received from AI provider');
         });
     });
 
@@ -210,11 +98,9 @@ describe('ResponseParser', () => {
 
             const result = parser['parseResponseContent'](jsonContent);
 
-            expect(result).toEqual({
-                title: 'Test Title',
-                body: 'Test Description',
-                summary: undefined
-            });
+            expect(result.title).toBe('Test Title');
+            expect(result.body).toBe('Test Description');
+            expect(result.summary).toBe('Test Description'); // Fallback from body
         });
 
         it('should extract JSON from mixed content', () => {
@@ -222,11 +108,9 @@ describe('ResponseParser', () => {
 
             const result = parser['parseResponseContent'](mixedContent);
 
-            expect(result).toEqual({
-                title: 'Test Title',
-                body: 'Test Description',
-                summary: undefined
-            });
+            expect(result.title).toBe('Test Title');
+            expect(result.body).toBe('Test Description');
+            expect(result.summary).toBe('Test Description'); // Fallback from body
         });
 
         it('should fall back to text extraction when JSON parsing fails', () => {
@@ -243,11 +127,9 @@ describe('ResponseParser', () => {
 
             const result = parser['parseResponseContent'](textContent);
 
-            expect(result).toEqual({
-                title: 'Test Title',
-                body: textContent,
-                summary: undefined
-            });
+            expect(result.title).toBe('Test Title');
+            expect(result.body).toBe(textContent);
+            expect(result.summary).toBe('This is the description content.'); // Fallback from first paragraph
         });
 
         it('should extract from plain text with Title prefix', () => {
@@ -255,11 +137,9 @@ describe('ResponseParser', () => {
 
             const result = parser['parseResponseContent'](textContent);
 
-            expect(result).toEqual({
-                title: 'Test Title',
-                body: textContent,
-                summary: undefined
-            });
+            expect(result.title).toBe('Test Title');
+            expect(result.body).toBe(textContent);
+            expect(result.summary).toBe('This is the description content.'); // Fallback from first paragraph
         });
 
         it('should extract from plain text with subheader', () => {
@@ -267,11 +147,9 @@ describe('ResponseParser', () => {
 
             const result = parser['parseResponseContent'](textContent);
 
-            expect(result).toEqual({
-                title: 'Test Title',
-                body: textContent,
-                summary: undefined
-            });
+            expect(result.title).toBe('Test Title');
+            expect(result.body).toBe(textContent);
+            expect(result.summary).toBe('This is the description content.'); // Fallback from first paragraph
         });
 
         it('should extract first meaningful line as title when no patterns match', () => {
@@ -291,11 +169,9 @@ describe('ResponseParser', () => {
 
             const result = parser['parseResponseContent'](textContent);
 
-            expect(result).toEqual({
-                title: 'This is the description content.',
-                body: textContent,
-                summary: undefined
-            });
+            expect(result.title).toBe('This is the description content.');
+            expect(result.body).toBe(textContent);
+            expect(result.summary).toBe('This is the description content.'); // Fallback from first paragraph
         });
     });
 
@@ -398,7 +274,7 @@ describe('ResponseParser', () => {
         it('should return undefined when no suitable summary found', () => {
             const content = 'Short\n\nMore content';
             const summary = parser['extractSummary'](content);
-            expect(summary).toBeUndefined();
+            expect(summary).toBeNull();
         });
 
         it('should handle case insensitive Summary prefix', () => {

@@ -35,34 +35,15 @@ export class AIDescriptionGeneratorService {
     // Select AI provider
     const selectedProvider = await this.providerManager.selectProvider();
 
-    // First, generate a summary using selected AI provider
-    const summary = await this.generateSummary(options);
-
     // Build the prompt using the new PromptBuilder
-    const prompt = this.promptBuilder.buildPrompt(options, summary);
+    const prompt = this.promptBuilder.buildPrompt(options);
 
     // Generate content using the provider manager
     const content = await this.providerManager.generateContent(prompt, selectedProvider);
-
     // Parse the response using the new ResponseParser
     const result = this.responseParser.parseAIResponse({ content }, selectedProvider);
 
-    return {
-      ...result,
-      summary
-    };
-  }
-
-  private async generateSummary(_options: GenerateDescriptionOptions): Promise<string> {
-    const selectedProvider = await this.providerManager.selectProvider();
-
-    // Create a simplified prompt for summary generation
-    const summaryPrompt = `Generate a concise summary of the changes in this pull request based on the Jira ticket and file changes. Focus on the key modifications and their purpose.`;
-
-    // Generate the summary using the provider manager
-    const summary = await this.providerManager.generateContent(summaryPrompt, selectedProvider);
-
-    return summary;
+    return result;
   }
 
   // All other functionality is now handled by the modular classes:

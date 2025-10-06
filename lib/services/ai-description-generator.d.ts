@@ -21,6 +21,5 @@ export declare class AIDescriptionGeneratorService {
     private readonly responseParser;
     constructor();
     generatePRDescription(options: GenerateDescriptionOptions): Promise<GeneratedPRContent>;
-    private generateSummary;
 }
 //# sourceMappingURL=ai-description-generator.d.ts.map

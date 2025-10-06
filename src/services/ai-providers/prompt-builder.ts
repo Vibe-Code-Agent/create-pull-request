@@ -16,7 +16,7 @@ export interface PromptBuilderOptions {
 }
 
 export class PromptBuilder {
-  buildPrompt(options: PromptBuilderOptions, summary?: string): string {
+  buildPrompt(options: PromptBuilderOptions): string {
     const { jiraTicket, gitChanges, template, diffContent, repoInfo } = options;
 
     let prompt = this.buildPromptHeader();
@@ -25,8 +25,8 @@ export class PromptBuilder {
     prompt += this.buildGitChangesSection(gitChanges);
     prompt += this.buildFileDetailsSection(gitChanges, jiraTicket, repoInfo);
     prompt += this.buildDiffContentSection(diffContent);
-    prompt += this.buildTemplateAndSummarySection(template, summary);
-    prompt += this.buildInstructionsSection();
+    prompt += this.buildTemplateSection(template);
+    prompt += this.buildInstructionsSection(jiraTicket);
 
     return prompt;
   }
@@ -39,8 +39,7 @@ export class PromptBuilder {
 
   private buildJiraTicketSection(jiraTicket: JiraTicket): string {
     let prompt = `## Jira Ticket Information:\n`;
-    prompt += `- **Ticket**: ${jiraTicket.key}\n`;
-    prompt += `- **Summary**: ${jiraTicket.summary}\n`;
+    prompt += `- **Jira Ticket**: [${jiraTicket.key}](${jiraTicket.url}) - ${jiraTicket.summary}\n`;
     prompt += `- **Type**: ${jiraTicket.issueType}\n`;
     prompt += `- **Status**: ${jiraTicket.status}\n`;
     prompt += `- **Assignee**: ${jiraTicket.assignee || 'Unassigned'}\n`;
@@ -51,7 +50,7 @@ export class PromptBuilder {
     }
 
     if (jiraTicket.parentTicket) {
-      prompt += `- **Parent Ticket**: ${jiraTicket.parentTicket.key} - ${jiraTicket.parentTicket.summary}\n`;
+      prompt += `- **Parent Ticket**: [${jiraTicket.parentTicket.key}](${jiraTicket.parentTicket.url}) - ${jiraTicket.parentTicket.summary}\n`;
     }
 
     return prompt;
@@ -139,7 +138,7 @@ export class PromptBuilder {
     }
   }
 
-  private buildTemplateAndSummarySection(template?: PullRequestTemplate, summary?: string): string {
+  private buildTemplateSection(template?: PullRequestTemplate): string {
     let prompt = '';
 
     if (template) {
@@ -148,28 +147,61 @@ export class PromptBuilder {
       prompt += `\`\`\`\n${template.content}\n\`\`\`\n`;
     }
 
-    if (summary) {
-      prompt += `\n## AI-Generated Summary:\n`;
-      prompt += `${summary}\n`;
-    }
-
     return prompt;
   }
 
-  private buildInstructionsSection(): string {
+  private buildInstructionsSection(jiraTicket: JiraTicket): string {
     let prompt = `\n## Instructions:\n`;
-    prompt += `Please generate a comprehensive pull request description that includes:\n`;
-    prompt += `1. A clear, descriptive title\n`;
-    prompt += `2. A detailed description explaining what changes were made and why\n`;
-    prompt += `3. Any relevant context from the Jira ticket and documentation\n`;
-    prompt += `4. Testing considerations\n`;
-    prompt += `5. Any breaking changes or migration notes\n\n`;
+    prompt += `Please generate a comprehensive pull request description following these guidelines:\n\n`;
+    
+    prompt += `### Title Requirements:\n`;
+    prompt += `- **MUST** start with the Jira ticket key: "${jiraTicket.key}"\n`;
+    prompt += `- Format: "${jiraTicket.key}: [Clear, descriptive title summarizing the change]"\n`;
+    prompt += `- Example: "${jiraTicket.key}: Implement user authentication with OAuth2"\n`;
+    prompt += `- Keep it concise but descriptive (max 72 characters)\n\n`;
+    
+    prompt += `### Summary Requirements:\n`;
+    prompt += `- Provide a concise overview of what was changed and why\n`;
+    prompt += `- Focus on the key modifications and their purpose\n`;
+    prompt += `- Reference the Jira ticket context\n`;
+    prompt += `- Keep it brief (2-3 sentences)\n`;
+    prompt += `- **DO NOT** include testing steps, verification steps, or proposed changes\n`;
+    prompt += `- **DO NOT** include instructions on how to test or verify the changes\n`;
+    prompt += `- Focus only on what was implemented, not on future steps\n\n`;
+    
+    prompt += `### Description Requirements:\n`;
+    prompt += `1. **Overview**: Brief explanation of the changes and their purpose\n`;
+    prompt += `2. **Jira Ticket Context**: Reference the ticket description and requirements\n`;
+    prompt += `3. **File Changes Analysis**: For each modified file, provide:\n`;
+    prompt += `   - **MUST include URLs to specific line changes** (use the provided line URLs from the context)\n`;
+    prompt += `   - Link to the exact lines that were modified, not just the file\n`;
+    prompt += `   - What was changed in the file\n`;
+    prompt += `   - Why this change was necessary\n`;
+    prompt += `   - How it relates to the Jira ticket description\n`;
+    prompt += `   - Any important implementation details\n`;
+    prompt += `   - Format: Use markdown links like [filename:L123-L145](URL) for line-specific changes\n`;
+    prompt += `   - Example: [src/utils/auth.ts:L45-L67](https://github.com/.../auth.ts#L45-L67)\n`;
+    prompt += `4. **Technical Details**: Explain the implementation approach\n`;
+    prompt += `5. **Testing**: Describe how the changes can be tested\n`;
+    prompt += `6. **Breaking Changes**: List any breaking changes or migration steps (if applicable)\n\n`;
+    
+    prompt += `### Critical Requirements:\n`;
+    prompt += `- Title MUST begin with "${jiraTicket.key}:"\n`;
+    prompt += `- Summary MUST NOT include testing/verification steps or proposed changes\n`;
+    prompt += `- File changes MUST include URLs to specific line changes (not just file URLs)\n`;
+    prompt += `- Use line-specific URLs from the context (e.g., file.ts#L10-L20)\n`;
+    prompt += `- File changes MUST be explained in detail, not just listed\n`;
+    prompt += `- Changes MUST match and reference the Jira ticket description\n`;
+    prompt += `- Each file modification should explain the "what", "why", and "how"\n`;
+    prompt += `- Use markdown links [filename:L10-L20](URL) when referencing specific code changes\n`;
+    prompt += `- Connect code changes to business requirements from the ticket\n\n`;
+    
     prompt += `Format your response as JSON with the following structure:\n`;
     prompt += `\`\`\`json\n`;
     prompt += `{\n`;
-    prompt += `  "title": "Clear and descriptive PR title",\n`;
-    prompt += `  "description": "Detailed description of changes",\n`;
-    prompt += `  "summary": "Brief summary of the changes"\n`;
+    prompt += `  "title": "${jiraTicket.key}: [Your descriptive title here]",\n`;
+    prompt += `  "summary": "Brief 2-3 sentence summary of what was implemented and why (no testing steps)",\n`;
+    prompt += `  "description": "Comprehensive description with detailed file changes analysis"\n`;
     prompt += `}\n`;
     prompt += `\`\`\`\n`;
 

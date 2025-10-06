@@ -14,10 +14,12 @@ export interface JiraTicket {
     reporter: string;
     created: string;
     updated: string;
+    url: string;
     parentTicket?: {
         key: string;
         summary: string;
         issueType: string;
+        url: string;
     } | null;
     confluencePages?: ConfluencePage[];
 }

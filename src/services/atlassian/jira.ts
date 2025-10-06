@@ -11,10 +11,12 @@ export interface JiraTicket {
     reporter: string;
     created: string;
     updated: string;
+    url: string;
     parentTicket?: {
         key: string;
         summary: string;
         issueType: string;
+        url: string;
     } | null;
 }
 
@@ -57,19 +59,34 @@ export class JiraService extends BaseAtlassianService {
         const parentFields = parentResponse.data.fields;
 
         if (parentFields.summary?.trim()) {
+            const parentUrl = this.buildJiraTicketUrl(fields.parent.key);
             return {
                 key: fields.parent.key,
                 summary: parentFields.summary.trim(),
-                issueType: parentFields.issuetype.name
+                issueType: parentFields.issuetype.name,
+                url: parentUrl
             };
         }
         return null;
     }
 
     /**
+     * Build the Jira ticket URL
+     */
+    private buildJiraTicketUrl(ticketKey: string): string {
+        // Remove the API path from base URL to get the root domain
+        let baseUrl = this.config.baseUrl.replace(/\/rest\/api\/\d+\/?$/, '');
+        // Remove any trailing slashes
+        baseUrl = baseUrl.replace(/\/+$/, '');
+        return `${baseUrl}/browse/${ticketKey}`;
+    }
+
+    /**
      * Build the JiraTicket object from the fetched data
      */
     private buildJiraTicket(issue: any, fields: any, parentTicket: any): JiraTicket {
+        const ticketUrl = this.buildJiraTicketUrl(issue.key);
+        
         return {
             key: issue.key,
             summary: fields.summary,
@@ -80,6 +97,7 @@ export class JiraService extends BaseAtlassianService {
             reporter: fields.reporter.displayName,
             created: fields.created,
             updated: fields.updated,
+            url: ticketUrl,
             parentTicket
         };
     }

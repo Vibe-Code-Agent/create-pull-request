@@ -95,6 +95,7 @@ describe('JiraService', () => {
                 reporter: 'Jane Doe',
                 created: '2023-01-01T00:00:00.000Z',
                 updated: '2023-01-02T00:00:00.000Z',
+                url: 'https://company.atlassian.net/browse/PROJ-123',
                 parentTicket: null
             });
 
@@ -184,7 +185,8 @@ describe('JiraService', () => {
             expect(result.parentTicket).toEqual({
                 key: 'PROJ-100',
                 summary: 'Parent ticket summary',
-                issueType: 'Story'
+                issueType: 'Story',
+                url: 'https://company.atlassian.net/browse/PROJ-100'
             });
 
             expect(mockAxiosInstance.get).toHaveBeenCalledTimes(2);

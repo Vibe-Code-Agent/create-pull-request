@@ -43,11 +43,8 @@ export abstract class BaseAIProvider {
   async generateContent(prompt: string): Promise<AIResponse> {
     try {
       const requestBody = this.buildRequestBody(prompt);
-
       const response = await this.client.post(this.getApiUrl(), requestBody);
-
       const content = this.extractContentFromResponse(response.data);
-
       return {
         content,
         provider: this.provider

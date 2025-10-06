@@ -14,7 +14,7 @@ export interface PromptBuilderOptions {
     };
 }
 export declare class PromptBuilder {
-    buildPrompt(options: PromptBuilderOptions, summary?: string): string;
+    buildPrompt(options: PromptBuilderOptions): string;
     private buildPromptHeader;
     private buildJiraTicketSection;
     private buildConfluencePagesSection;
@@ -23,7 +23,7 @@ export declare class PromptBuilder {
     private buildFileDetail;
     private buildFileLinks;
     private buildDiffContentSection;
-    private buildTemplateAndSummarySection;
+    private buildTemplateSection;
     private buildInstructionsSection;
     private generateFileUrl;
     private generateLineUrl;
