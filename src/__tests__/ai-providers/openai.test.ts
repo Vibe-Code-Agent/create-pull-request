@@ -1,13 +1,13 @@
 import axios from 'axios';
-import { ChatGPTProvider } from '../../services/ai-providers/chatgpt.js';
+import { OpenAIProvider } from '../../services/ai-providers/openai.js';
 import { DEFAULT_MODELS, AI_PROVIDERS } from '../../constants/index.js';
 
 // Mock axios
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
-describe('ChatGPTProvider', () => {
-  let provider: ChatGPTProvider;
+describe('OpenAIProvider', () => {
+  let provider: OpenAIProvider;
   let mockAxiosInstance: jest.Mocked<any>;
 
   beforeEach(() => {
@@ -20,18 +20,18 @@ describe('ChatGPTProvider', () => {
 
     mockedAxios.create.mockReturnValue(mockAxiosInstance);
 
-    provider = new ChatGPTProvider('test-api-key', 'gpt-4');
+    provider = new OpenAIProvider('test-api-key', 'gpt-4');
   });
 
   describe('constructor', () => {
     it('should initialize with correct configuration', () => {
-      expect(provider['provider']).toBe(AI_PROVIDERS.CHATGPT);
+      expect(provider['provider']).toBe(AI_PROVIDERS.OPENAI);
       expect(provider['apiKey']).toBe('test-api-key');
       expect(provider['model']).toBe('gpt-4');
     });
 
     it('should use default model when not provided', () => {
-      const defaultProvider = new ChatGPTProvider('test-key');
+      const defaultProvider = new OpenAIProvider('test-key');
       expect(defaultProvider['model']).toBe(DEFAULT_MODELS.OPENAI);
     });
 
@@ -47,13 +47,13 @@ describe('ChatGPTProvider', () => {
   });
 
   describe('getDefaultModel', () => {
-    it('should return default ChatGPT model', () => {
+    it('should return default OpenAI model', () => {
       expect(provider.getDefaultModel()).toBe(DEFAULT_MODELS.OPENAI);
     });
   });
 
   describe('getHeaders', () => {
-    it('should return ChatGPT-specific headers', () => {
+    it('should return OpenAI-specific headers', () => {
       const headers = provider.getHeaders();
       expect(headers).toEqual({
         'Authorization': 'Bearer test-api-key'
@@ -62,7 +62,7 @@ describe('ChatGPTProvider', () => {
   });
 
   describe('getApiUrl', () => {
-    it('should return ChatGPT API URL', () => {
+    it('should return OpenAI API URL', () => {
       expect(provider.getApiUrl()).toBe('https://api.openai.com/v1/chat/completions');
     });
   });
@@ -107,14 +107,14 @@ describe('ChatGPTProvider', () => {
       };
 
       expect(() => provider.extractContentFromResponse(response))
-        .toThrow('No content received from ChatGPT API');
+        .toThrow('No content received from OpenAI API');
     });
 
     it('should throw error for missing choices', () => {
       const response = {};
 
       expect(() => provider.extractContentFromResponse(response))
-        .toThrow('No content received from ChatGPT API');
+        .toThrow('No content received from OpenAI API');
     });
 
     it('should throw error for missing message content', () => {
@@ -127,7 +127,7 @@ describe('ChatGPTProvider', () => {
       };
 
       expect(() => provider.extractContentFromResponse(response))
-        .toThrow('No content received from ChatGPT API');
+        .toThrow('No content received from OpenAI API');
     });
   });
 
@@ -151,7 +151,7 @@ describe('ChatGPTProvider', () => {
 
       expect(result).toEqual({
         content: 'Generated content',
-        provider: AI_PROVIDERS.CHATGPT
+        provider: AI_PROVIDERS.OPENAI
       });
 
       expect(mockAxiosInstance.post).toHaveBeenCalledWith(

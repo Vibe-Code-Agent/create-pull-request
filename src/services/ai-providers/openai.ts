@@ -1,9 +1,9 @@
 import { BaseAIProvider } from './base.js';
 import { API_URLS, DEFAULT_MODELS, AI_PROVIDERS } from '../../constants/index.js';
 
-export class ChatGPTProvider extends BaseAIProvider {
+export class OpenAIProvider extends BaseAIProvider {
   constructor(apiKey: string, model?: string) {
-    super(AI_PROVIDERS.CHATGPT, apiKey, model);
+    super(AI_PROVIDERS.OPENAI, apiKey, model);
   }
 
   getDefaultModel(): string {
@@ -36,7 +36,7 @@ export class ChatGPTProvider extends BaseAIProvider {
 
   extractContentFromResponse(response: any): string {
     if (!response.choices?.[0]?.message?.content) {
-      throw new Error('No content received from ChatGPT API');
+      throw new Error('No content received from OpenAI API');
     }
     return response.choices[0].message.content;
   }

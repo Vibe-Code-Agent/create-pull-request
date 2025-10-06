@@ -51,7 +51,7 @@ describe('AIProviderManager', () => {
       manager = new AIProviderManager();
 
       expect(manager.getAvailableProviders()).toContain(AI_PROVIDERS.CLAUDE);
-      expect(manager.getAvailableProviders()).toContain(AI_PROVIDERS.CHATGPT);
+      expect(manager.getAvailableProviders()).toContain(AI_PROVIDERS.OPENAI);
       expect(manager.getAvailableProviders()).toContain(AI_PROVIDERS.GEMINI);
       expect(manager.getAvailableProviders()).toContain(AI_PROVIDERS.COPILOT);
     });
@@ -64,7 +64,7 @@ describe('AIProviderManager', () => {
       manager = new AIProviderManager();
 
       expect(manager.getAvailableProviders()).toContain(AI_PROVIDERS.CLAUDE);
-      expect(manager.getAvailableProviders()).toContain(AI_PROVIDERS.CHATGPT);
+      expect(manager.getAvailableProviders()).toContain(AI_PROVIDERS.OPENAI);
       expect(manager.getAvailableProviders()).toContain(AI_PROVIDERS.GEMINI);
     });
 
@@ -119,7 +119,7 @@ describe('AIProviderManager', () => {
       delete process.env.ANTHROPIC_API_KEY;
       delete process.env.CLAUDE_API_KEY;
       delete process.env.OPENAI_API_KEY;
-      delete process.env.CHATGPT_API_KEY;
+      delete process.env.OPENAI_API_KEY;
       delete process.env.GEMINI_API_KEY;
       delete process.env.GOOGLE_API_KEY;
 
@@ -139,11 +139,11 @@ describe('AIProviderManager', () => {
     });
 
     it('should prompt user when multiple providers available', async () => {
-      mockedInquirer.prompt.mockResolvedValue({ selectedProvider: AI_PROVIDERS.CHATGPT });
+      mockedInquirer.prompt.mockResolvedValue({ selectedProvider: AI_PROVIDERS.OPENAI });
 
       const result = await manager.selectProvider();
 
-      expect(result).toBe(AI_PROVIDERS.CHATGPT);
+      expect(result).toBe(AI_PROVIDERS.OPENAI);
       expect(mockedInquirer.prompt).toHaveBeenCalledWith([
         {
           type: 'list',
@@ -151,7 +151,7 @@ describe('AIProviderManager', () => {
           message: 'Multiple AI providers available. Please select one:',
           choices: expect.arrayContaining([
             { name: AI_PROVIDER_NAMES.CLAUDE, value: AI_PROVIDERS.CLAUDE },
-            { name: AI_PROVIDER_NAMES.CHATGPT, value: AI_PROVIDERS.CHATGPT },
+            { name: AI_PROVIDER_NAMES.OPENAI, value: AI_PROVIDERS.OPENAI },
             { name: AI_PROVIDER_NAMES.GEMINI, value: AI_PROVIDERS.GEMINI },
             { name: AI_PROVIDER_NAMES.COPILOT, value: AI_PROVIDERS.COPILOT }
           ])
@@ -237,7 +237,7 @@ describe('AIProviderManager', () => {
 
       const providers = manager.getAvailableProviders();
 
-      expect(providers).toEqual(expect.arrayContaining([AI_PROVIDERS.CLAUDE, AI_PROVIDERS.CHATGPT, AI_PROVIDERS.GEMINI, AI_PROVIDERS.COPILOT]));
+      expect(providers).toEqual(expect.arrayContaining([AI_PROVIDERS.CLAUDE, AI_PROVIDERS.OPENAI, AI_PROVIDERS.GEMINI, AI_PROVIDERS.COPILOT]));
     });
   });
 
@@ -260,7 +260,7 @@ describe('AIProviderManager', () => {
       manager = new AIProviderManager();
 
       expect(manager['getProviderDisplayName'](AI_PROVIDERS.CLAUDE)).toBe(AI_PROVIDER_NAMES.CLAUDE);
-      expect(manager['getProviderDisplayName'](AI_PROVIDERS.CHATGPT)).toBe(AI_PROVIDER_NAMES.CHATGPT);
+      expect(manager['getProviderDisplayName'](AI_PROVIDERS.OPENAI)).toBe(AI_PROVIDER_NAMES.OPENAI);
       expect(manager['getProviderDisplayName'](AI_PROVIDERS.GEMINI)).toBe(AI_PROVIDER_NAMES.GEMINI);
       expect(manager['getProviderDisplayName'](AI_PROVIDERS.COPILOT)).toBe(AI_PROVIDER_NAMES.COPILOT);
     });

@@ -1,5 +1,5 @@
 import { BaseAIProvider } from './base.js';
-export declare class ChatGPTProvider extends BaseAIProvider {
+export declare class OpenAIProvider extends BaseAIProvider {
     constructor(apiKey: string, model?: string);
     getDefaultModel(): string;
     getHeaders(): Record<string, string>;
@@ -7,4 +7,4 @@ export declare class ChatGPTProvider extends BaseAIProvider {
     buildRequestBody(prompt: string): any;
     extractContentFromResponse(response: any): string;
 }
-//# sourceMappingURL=chatgpt.d.ts.map
+//# sourceMappingURL=openai.d.ts.map

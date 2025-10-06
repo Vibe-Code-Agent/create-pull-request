@@ -26,7 +26,7 @@ describe('ResponseParser', () => {
             });
         });
 
-        it('should parse ChatGPT response correctly', () => {
+        it('should parse OpenAI response correctly', () => {
             const response = {
                 choices: [
                     {
@@ -37,7 +37,7 @@ describe('ResponseParser', () => {
                 ]
             };
 
-            const result = parser.parseAIResponse(response, AI_PROVIDERS.CHATGPT);
+            const result = parser.parseAIResponse(response, AI_PROVIDERS.OPENAI);
 
             expect(result).toEqual({
                 title: 'Generated response content',
@@ -117,28 +117,28 @@ describe('ResponseParser', () => {
                 .toThrow('No content received from Claude API');
         });
 
-        it('should extract content from ChatGPT response', () => {
+        it('should extract content from OpenAI response', () => {
             const response = {
                 choices: [
                     {
                         message: {
-                            content: 'ChatGPT response'
+                            content: 'OpenAI response'
                         }
                     }
                 ]
             };
 
-            const content = parser['extractContentFromResponse'](response, AI_PROVIDERS.CHATGPT);
-            expect(content).toBe('ChatGPT response');
+            const content = parser['extractContentFromResponse'](response, AI_PROVIDERS.OPENAI);
+            expect(content).toBe('OpenAI response');
         });
 
-        it('should throw error for invalid ChatGPT response', () => {
+        it('should throw error for invalid OpenAI response', () => {
             const response = {
                 choices: []
             };
 
-            expect(() => parser['extractContentFromResponse'](response, AI_PROVIDERS.CHATGPT))
-                .toThrow('No content received from ChatGPT API');
+            expect(() => parser['extractContentFromResponse'](response, AI_PROVIDERS.OPENAI))
+                .toThrow('No content received from OpenAI API');
         });
 
         it('should extract content from Gemini response', () => {

@@ -64,13 +64,13 @@ export declare const CONFLUENCE_ENDPOINTS: {
 };
 export declare const AI_PROVIDERS: {
     readonly CLAUDE: "claude";
-    readonly CHATGPT: "chatgpt";
+    readonly OPENAI: "openai";
     readonly GEMINI: "gemini";
     readonly COPILOT: "copilot";
 };
 export declare const AI_PROVIDER_NAMES: {
     readonly CLAUDE: "Claude (Anthropic)";
-    readonly CHATGPT: "ChatGPT (OpenAI)";
+    readonly OPENAI: "OpenAI (ChatGPT)";
     readonly GEMINI: "Gemini (Google)";
     readonly COPILOT: "GitHub Copilot";
 };
