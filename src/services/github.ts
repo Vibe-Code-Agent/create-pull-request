@@ -146,7 +146,22 @@ export class GitHubService {
       });
 
       return response.data.length > 0 ? response.data[0] : null;
-    } catch (_error) {
+    } catch (error: any) {
+      // Handle specific error cases with meaningful messages
+      if (error.status === HTTP_STATUS.UNAUTHORIZED) {
+        throw new Error('Authentication failed when checking for existing pull requests. Please check your GitHub token.');
+      } else if (error.status === HTTP_STATUS.FORBIDDEN) {
+        throw new Error('Access denied when checking for existing pull requests. Please check your GitHub token permissions.');
+      } else if (error.status === HTTP_STATUS.NOT_FOUND) {
+        // Repository not found - this is a valid case where we should return null
+        return null;
+      } else if (error.status === 422) {
+        // Invalid branch name or other validation error - return null as this is expected
+        return null;
+      }
+
+      // For network errors, rate limiting, or other transient issues, return null
+      // This allows the application to continue functioning even if PR checking fails
       return null;
     }
   }
@@ -253,7 +268,8 @@ export class GitHubService {
     }
 
     if (errors.length > 0) {
-      throw new Error(`Pull request validation failed:\n${errors.map(e => `- ${e}`).join('\n')}`);
+      const errorList = errors.map(error => `- ${error}`).join('\n');
+      throw new Error(`Pull request validation failed:\n${errorList}`);
     }
   }
 
@@ -262,12 +278,4 @@ export class GitHubService {
     return branch.current;
   }
 
-  async validateConnection(): Promise<boolean> {
-    try {
-      await this.octokit.rest.users.getAuthenticated();
-      return true;
-    } catch {
-      return false;
-    }
-  }
 }

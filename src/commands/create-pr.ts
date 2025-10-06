@@ -16,6 +16,152 @@ export interface CreatePROptions {
   draft?: boolean;
 }
 
+interface GeneratePRDescriptionParams {
+  aiDescriptionService: AIDescriptionGeneratorService;
+  spinner: ReturnType<typeof createSpinner>;
+  jiraTicket: any;
+  gitChanges: any;
+  template: any;
+  diffContent: string;
+  prTitle?: string;
+  repoInfo: {
+    owner: string;
+    repo: string;
+    currentBranch: string;
+  };
+}
+
+interface GenerateOptions {
+  jiraTicket: any;
+  gitChanges: any;
+  template: any;
+  diffContent: string;
+  prTitle?: string;
+  repoInfo: {
+    owner: string;
+    repo: string;
+    currentBranch: string;
+  };
+}
+
+/**
+ * Format error message from error object
+ */
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Unknown error';
+}
+
+/**
+ * Ask user if they want to retry after initial failure
+ */
+async function askForRetry(): Promise<boolean> {
+  const { retry } = await inquirer.prompt([{
+    type: 'confirm',
+    name: 'retry',
+    message: 'Would you like to retry generating the summary?',
+    default: true
+  }]);
+  return retry;
+}
+
+/**
+ * Ask user if they want to continue retrying after a failed attempt
+ */
+async function askToContinueRetry(attemptNumber: number, maxRetries: number): Promise<boolean> {
+  const { continueRetry } = await inquirer.prompt([{
+    type: 'confirm',
+    name: 'continueRetry',
+    message: `Retry attempt ${attemptNumber} of ${maxRetries} failed. Continue retrying?`,
+    default: true
+  }]);
+  return continueRetry;
+}
+
+/**
+ * Generate PR description using AI service
+ */
+async function generateDescription(
+  aiDescriptionService: AIDescriptionGeneratorService,
+  options: GenerateOptions
+): Promise<any> {
+  const result = await aiDescriptionService.generatePRDescription(options);
+  
+  if (!result) {
+    throw new Error('Failed to generate PR description - AI service returned null or undefined');
+  }
+  
+  return result;
+}
+
+/**
+ * Perform retry attempts to generate PR description
+ */
+async function retryAIDescriptionGeneration(
+  aiDescriptionService: AIDescriptionGeneratorService,
+  spinner: ReturnType<typeof createSpinner>,
+  options: GenerateOptions,
+  maxRetries: number
+): Promise<any> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      spinner.start(`Retrying pull request description generation (attempt ${attempt}/${maxRetries})...`);
+      const content = await generateDescription(aiDescriptionService, options);
+      spinner.succeed('Pull request description generated successfully');
+      return content;
+    } catch (retryError) {
+      spinner.fail(`Retry attempt ${attempt} failed`);
+
+      const isLastAttempt = attempt === maxRetries;
+      if (isLastAttempt) {
+        console.log(chalk.red(`❌ All retry attempts failed. Last error: ${getErrorMessage(retryError)}`));
+        throw retryError;
+      }
+
+      console.log(chalk.yellow(`⚠️  Attempt ${attempt} failed: ${getErrorMessage(retryError)}`));
+      const shouldContinue = await askToContinueRetry(attempt, maxRetries);
+      
+      if (!shouldContinue) {
+        throw retryError;
+      }
+    }
+  }
+
+  throw new Error('Failed to generate PR description after retries');
+}
+
+/**
+ * Generate PR description with automatic retry capability
+ */
+async function generatePRDescriptionWithRetry(params: GeneratePRDescriptionParams): Promise<any> {
+  const { aiDescriptionService, spinner, jiraTicket, gitChanges, template, diffContent, prTitle, repoInfo } = params;
+  const maxRetries = 3;
+
+  const generateOptions: GenerateOptions = {
+    jiraTicket,
+    gitChanges,
+    template,
+    diffContent,
+    prTitle,
+    repoInfo
+  };
+
+  try {
+    const content = await generateDescription(aiDescriptionService, generateOptions);
+    spinner.succeed('Pull request description generated');
+    return content;
+  } catch (error) {
+    spinner.fail('Failed to generate pull request description');
+    console.log(chalk.red(`❌ Error: ${getErrorMessage(error)}`));
+
+    const shouldRetry = await askForRetry();
+    if (!shouldRetry) {
+      throw error;
+    }
+
+    return await retryAIDescriptionGeneration(aiDescriptionService, spinner, generateOptions, maxRetries);
+  }
+}
+
 export async function createPullRequest(options: CreatePROptions): Promise<void> {
   const spinner = createSpinner();
 
@@ -180,86 +326,20 @@ export async function createPullRequest(options: CreatePROptions): Promise<void>
 
     // Generate PR description using AI with retry capability
     spinner.start('Generating pull request description with AI...');
-    let generatedContent: any = null;
-    try {
-      generatedContent = await aiDescriptionService.generatePRDescription({
-        jiraTicket: ticketInfo,
-        gitChanges,
-        template: selectedTemplate,
-        diffContent,
-        prTitle: options.title,
-        repoInfo: {
-          owner: repo.owner,
-          repo: repo.repo,
-          currentBranch: currentBranch
-        }
-      });
-      spinner.succeed('Pull request description generated');
-    } catch (error) {
-      spinner.fail('Failed to generate pull request description');
-      console.log(chalk.red(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`));
-
-      const { retry } = await inquirer.prompt([{
-        type: 'confirm',
-        name: 'retry',
-        message: 'Would you like to retry generating the summary?',
-        default: true
-      }]);
-
-      if (!retry) {
-        throw error;
+    const generatedContent = await generatePRDescriptionWithRetry({
+      aiDescriptionService,
+      spinner,
+      jiraTicket: ticketInfo,
+      gitChanges,
+      template: selectedTemplate,
+      diffContent,
+      prTitle: options.title,
+      repoInfo: {
+        owner: repo.owner,
+        repo: repo.repo,
+        currentBranch: currentBranch
       }
-
-      // Retry generating the description
-      let retryAttempt = 1;
-      const maxRetries = 3;
-
-      while (retryAttempt <= maxRetries) {
-        try {
-          spinner.start(`Retrying pull request description generation (attempt ${retryAttempt}/${maxRetries})...`);
-          generatedContent = await aiDescriptionService.generatePRDescription({
-            jiraTicket: ticketInfo,
-            gitChanges,
-            template: selectedTemplate,
-            diffContent,
-            prTitle: options.title,
-            repoInfo: {
-              owner: repo.owner,
-              repo: repo.repo,
-              currentBranch: currentBranch
-            }
-          });
-          spinner.succeed('Pull request description generated successfully');
-          break;
-        } catch (retryError) {
-          retryAttempt++;
-          spinner.fail(`Retry attempt ${retryAttempt - 1} failed`);
-
-          if (retryAttempt <= maxRetries) {
-            console.log(chalk.yellow(`⚠️  Attempt ${retryAttempt - 1} failed: ${retryError instanceof Error ? retryError.message : 'Unknown error'}`));
-
-            const { continueRetry } = await inquirer.prompt([{
-              type: 'confirm',
-              name: 'continueRetry',
-              message: `Retry attempt ${retryAttempt - 1} of ${maxRetries} failed. Continue retrying?`,
-              default: true
-            }]);
-
-            if (!continueRetry) {
-              throw retryError;
-            }
-          } else {
-            console.log(chalk.red(`❌ All retry attempts failed. Last error: ${retryError instanceof Error ? retryError.message : 'Unknown error'}`));
-            throw retryError;
-          }
-        }
-      }
-    }
-
-    // Ensure we have generated content after retries
-    if (!generatedContent) {
-      throw new Error('Failed to generate PR description after retries');
-    }
+    });
 
     // Show generated content for review
     console.log(chalk.blue('\n📝 Generated Pull Request:'));
@@ -334,9 +414,7 @@ export async function createPullRequest(options: CreatePROptions): Promise<void>
 
       finalTitle = editedContent.editedTitle;
       finalBody = editedContent.editedBody;
-      if (editedContent.editedSummary !== undefined) {
-        finalSummary = editedContent.editedSummary;
-      }
+      finalSummary = editedContent.editedSummary ?? finalSummary;
     }
 
     // Create pull request or show dry run
