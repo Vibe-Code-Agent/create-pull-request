@@ -1,13 +1,13 @@
 # Create Pull Request CLI
 
-A CLI tool that automatically generates pull request descriptions based on Jira tickets and file changes using AI providers (Claude, ChatGPT, Gemini, or GitHub Copilot).
+A CLI tool that automatically generates pull request descriptions based on Jira tickets and file changes using AI providers (Claude, OpenAI, Gemini, or GitHub Copilot).
 
 ## Features
 
 - 🎫 **Jira Integration**: Automatically fetches ticket information from Jira
 - 📄 **Confluence Integration**: Optionally includes linked Confluence pages in PR description generation
 - 🔄 **Git Analysis**: Analyzes file changes and commit history
-- 🤖 **AI-Powered**: Uses your selected AI provider (Claude, ChatGPT, Gemini, or Copilot) to generate intelligent PR descriptions
+- 🤖 **AI-Powered**: Uses your selected AI provider (Claude, OpenAI, Gemini, or Copilot) to generate intelligent PR descriptions
 - 📋 **Template Support**: Automatically detects and uses PR templates from your repository
 - ✅ **User Review**: Always asks for user confirmation before creating the PR
 - 🏃‍♂️ **Dry Run Mode**: Preview generated content without creating a PR
@@ -58,7 +58,7 @@ This will guide you through setting up all required credentials and AI providers
    CLAUDE_API_KEY=your-claude-api-key
    CLAUDE_MODEL=claude-3-5-sonnet-20241022
 
-   # Secondary: OpenAI/ChatGPT
+   # Secondary: OpenAI (ChatGPT)
    OPENAI_API_KEY=your-openai-api-key
    OPENAI_MODEL=gpt-4o
 
@@ -224,7 +224,7 @@ The tool supports the following AI providers:
    - Superior reasoning capabilities for complex changes
    - Fast response times
 
-2. **ChatGPT (OpenAI)** - Alternative
+2. **OpenAI (ChatGPT)** - Alternative
    - Reliable option with good code understanding
    - Good understanding of code context
    - Consistent performance
@@ -241,7 +241,7 @@ The tool supports the following AI providers:
 
 **Provider Selection**:
 - If only one provider is configured, it will be used automatically
-- If multiple providers are available, the tool will use the priority order: Claude → ChatGPT → Gemini → Copilot
+- If multiple providers are available, the tool will use the priority order: Claude → OpenAI → Gemini → Copilot
 - You can configure multiple providers, but the tool will **not automatically fall back** if your selected provider fails
 - If your selected provider fails, you'll get a clear error message and need to ensure it's properly configured
 

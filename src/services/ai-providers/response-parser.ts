@@ -21,9 +21,9 @@ export class ResponseParser {
         }
         return response.content[0].text;
 
-      case AI_PROVIDERS.CHATGPT:
+      case AI_PROVIDERS.OPENAI:
         if (!response.choices?.[0]?.message?.content) {
-          throw new Error('No content received from ChatGPT API');
+          throw new Error('No content received from OpenAI API');
         }
         return response.choices[0].message.content;
 

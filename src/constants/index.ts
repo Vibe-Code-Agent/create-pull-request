@@ -123,7 +123,7 @@ export const CONFLUENCE_ENDPOINTS = {
 // AI Provider Constants
 export const AI_PROVIDERS = {
   CLAUDE: 'claude',
-  CHATGPT: 'chatgpt',
+  OPENAI: 'openai',
   GEMINI: 'gemini',
   COPILOT: 'copilot'
 } as const;
@@ -131,7 +131,7 @@ export const AI_PROVIDERS = {
 // AI Provider Display Names
 export const AI_PROVIDER_NAMES = {
   CLAUDE: 'Claude (Anthropic)',
-  CHATGPT: 'ChatGPT (OpenAI)',
+  OPENAI: 'OpenAI (ChatGPT)',
   GEMINI: 'Gemini (Google)',
   COPILOT: 'GitHub Copilot'
 } as const;

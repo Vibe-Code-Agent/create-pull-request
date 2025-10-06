@@ -113,13 +113,13 @@ async function setupEnvironment() {
             message: 'Select your preferred AI provider for PR description generation:',
             choices: [
                 { name: 'Claude (Anthropic) - Recommended', value: 'claude' },
-                { name: 'ChatGPT (OpenAI)', value: 'chatgpt' },
+                { name: 'OpenAI (ChatGPT)', value: 'openai' },
                 { name: 'Gemini (Google)', value: 'gemini' },
                 { name: 'GitHub Copilot', value: 'copilot' },
                 { name: 'Skip AI provider setup', value: 'none' }
             ],
             default: existingConfig?.aiProviders?.claude ? 'claude' :
-                     existingConfig?.aiProviders?.openai ? 'chatgpt' :
+                     existingConfig?.aiProviders?.openai ? 'openai' :
                      existingConfig?.aiProviders?.gemini ? 'gemini' :
                      existingConfig?.aiProviders?.copilot || existingConfig?.copilot?.apiToken ? 'copilot' :
                      'claude'
@@ -155,7 +155,7 @@ async function setupEnvironment() {
                 const hasExisting = existingConfig?.aiProviders?.openai?.apiKey;
                 return hasExisting ? 'Enter your OpenAI API key (leave blank to keep current):' : 'Enter your OpenAI API key:';
             },
-            when: (answers) => answers.aiProvider === 'chatgpt',
+            when: (answers) => answers.aiProvider === 'openai',
             default: '',
             validate: (input, answers) => {
                 // If there's an existing key and input is blank, that's OK
@@ -169,7 +169,7 @@ async function setupEnvironment() {
             type: 'input',
             name: 'openaiModel',
             message: 'Enter OpenAI model to use:',
-            when: (answers) => answers.aiProvider === 'chatgpt',
+            when: (answers) => answers.aiProvider === 'openai',
             default: existingConfig?.aiProviders?.openai?.model || DEFAULT_GPT_MODEL
         },
         {
@@ -277,7 +277,7 @@ async function setupEnvironment() {
                 apiKey: answers.claudeApiKey || existingConfig?.aiProviders?.claude?.apiKey,
                 model: answers.claudeModel || existingConfig?.aiProviders?.claude?.model || DEFAULT_CLAUDE_MODEL
             };
-        } else if (answers.aiProvider === 'chatgpt') {
+        } else if (answers.aiProvider === 'openai') {
             config.aiProviders.openai = {
                 apiKey: answers.openaiApiKey || existingConfig?.aiProviders?.openai?.apiKey,
                 model: answers.openaiModel || existingConfig?.aiProviders?.openai?.model || DEFAULT_GPT_MODEL
@@ -546,7 +546,7 @@ async function updateConfiguration() {
                 { name: 'Remove AI provider configuration', value: 'none' }
             ],
             default: currentConfig.aiProviders?.claude ? 'claude' :
-                     currentConfig.aiProviders?.openai ? 'chatgpt' : 
+                     currentConfig.aiProviders?.openai ? 'openai' : 
                      currentConfig.aiProviders?.gemini ? 'gemini' :
                      currentConfig.aiProviders?.copilot ? 'copilot' : 'claude'
         });
@@ -573,7 +573,7 @@ async function updateConfiguration() {
             type: 'password',
             name: 'openaiApiKey',
             message: `Update OpenAI API key (current: ${currentConfig.aiProviders?.openai?.apiKey ? 'set' : 'not set'}):`,
-            when: (answers) => answers.aiProvider === 'chatgpt',
+            when: (answers) => answers.aiProvider === 'openai',
             validate: (input) => input.trim() ? true : 'OpenAI API key is required for ChatGPT'
         });
 
@@ -581,7 +581,7 @@ async function updateConfiguration() {
             type: 'input',
             name: 'openaiModel',
             message: 'Update OpenAI model:',
-            when: (answers) => answers.aiProvider === 'chatgpt',
+            when: (answers) => answers.aiProvider === 'openai',
             default: currentConfig.aiProviders?.openai?.model || DEFAULT_GPT_MODEL
         });
 
@@ -669,7 +669,7 @@ async function updateConfiguration() {
                 apiKey: answers.claudeApiKey,
                 model: answers.claudeModel || DEFAULT_CLAUDE_MODEL
             };
-        } else if (answers.aiProvider === 'chatgpt') {
+        } else if (answers.aiProvider === 'openai') {
             updatedConfig.aiProviders.openai = {
                 apiKey: answers.openaiApiKey,
                 model: answers.openaiModel || DEFAULT_GPT_MODEL

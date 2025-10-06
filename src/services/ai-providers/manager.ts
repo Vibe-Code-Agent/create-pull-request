@@ -3,7 +3,7 @@ import { getConfig } from '../../utils/config.js';
 import { BaseAIProvider, AIProvider } from './base.js';
 import { AI_PROVIDERS, AI_PROVIDER_NAMES } from '../../constants/index.js';
 import { ClaudeProvider } from './claude.js';
-import { ChatGPTProvider } from './chatgpt.js';
+import { OpenAIProvider } from './openai.js';
 import { GeminiProvider } from './gemini.js';
 import { CopilotProvider } from './copilot.js';
 
@@ -32,14 +32,13 @@ export class AIProviderManager {
       ));
     }
 
-    // ChatGPT client
-    const chatgptKey = aiProvidersConfig?.openai?.apiKey ||
-      process.env.OPENAI_API_KEY ||
-      process.env.CHATGPT_API_KEY;
+    // OpenAI client
+    const openaiKey = aiProvidersConfig?.openai?.apiKey ||
+      process.env.OPENAI_API_KEY;
 
-    if (chatgptKey) {
-      this.providers.set(AI_PROVIDERS.CHATGPT, new ChatGPTProvider(
-        chatgptKey,
+    if (openaiKey) {
+      this.providers.set(AI_PROVIDERS.OPENAI, new OpenAIProvider(
+        openaiKey,
         aiProvidersConfig?.openai?.model
       ));
     }
@@ -129,7 +128,7 @@ export class AIProviderManager {
   private getProviderDisplayName(provider: AIProvider): string {
     const names: Record<AIProvider, string> = {
       [AI_PROVIDERS.CLAUDE]: AI_PROVIDER_NAMES.CLAUDE,
-      [AI_PROVIDERS.CHATGPT]: AI_PROVIDER_NAMES.CHATGPT,
+      [AI_PROVIDERS.OPENAI]: AI_PROVIDER_NAMES.OPENAI,
       [AI_PROVIDERS.GEMINI]: AI_PROVIDER_NAMES.GEMINI,
       [AI_PROVIDERS.COPILOT]: AI_PROVIDER_NAMES.COPILOT
     };

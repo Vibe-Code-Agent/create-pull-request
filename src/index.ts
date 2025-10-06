@@ -55,7 +55,7 @@ program
     console.log(chalk.yellow('   JIRA_USERNAME') + '=your-email@company.com');
     console.log(chalk.yellow('   JIRA_API_TOKEN') + '=your-jira-api-token');
     console.log(chalk.yellow('   GITHUB_TOKEN') + '=your-github-personal-access-token');
-    console.log('\n🤖 ' + chalk.bold('AI Providers (Primary: Claude Code → ChatGPT → Fallback: Gemini → Copilot):'));
+    console.log('\n🤖 ' + chalk.bold('AI Providers (Primary: Claude Code → OpenAI → Fallback: Gemini → Copilot):'));
     console.log(chalk.yellow('   OPENAI_API_KEY') + '=your-openai-api-key ' + chalk.gray('(fallback)'));
     console.log(chalk.yellow('   GEMINI_API_KEY') + '=your-gemini-api-key ' + chalk.gray('(fallback)'));
     console.log(chalk.yellow('   ANTHROPIC_API_KEY') + '=your-anthropic-api-key ' + chalk.gray('(recommended)'));
@@ -64,7 +64,7 @@ program
     console.log('📝 ' + chalk.bold('Important notes:'));
     console.log('• Make sure your GitHub token has repo permissions');
     console.log('• For Jira, generate an API token from your Atlassian account settings');
-    console.log('• The tool will automatically prioritize ChatGPT → Gemini → Copilot');
+    console.log('• The tool will automatically prioritize OpenAI → Gemini → Copilot');
     console.log('• At least one AI provider is required for generating PR descriptions');
     console.log('• The setup wizard creates a global config file for easier management');
     console.log('• Jira ticket IDs will be auto-detected from branch names (e.g., ft/ET-123, feature-PROJ-456)');

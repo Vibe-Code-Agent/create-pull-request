@@ -1,6 +1,6 @@
 export { BaseAIProvider, AIProvider, AIConfig, AIResponse } from './base.js';
 export { ClaudeProvider } from './claude.js';
-export { ChatGPTProvider } from './chatgpt.js';
+export { OpenAIProvider } from './openai.js';
 export { GeminiProvider } from './gemini.js';
 export { CopilotProvider } from './copilot.js';
 export { AIProviderManager } from './manager.js';
