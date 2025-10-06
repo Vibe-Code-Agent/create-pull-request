@@ -616,8 +616,7 @@ jobs:
       - name: Wait for SonarCloud Quality Gate
         id: quality-gate
         run: |
-          echo "⏳ Waiting for Quality Gate result..."
-          sleep 45
+          echo "⏳ Polling SonarCloud for Quality Gate result..."
 
           PR_NUMBER="${{ github.event.pull_request.number }}"
 
@@ -627,30 +626,71 @@ jobs:
             SONAR_PROJECT_KEY="${{ github.event.repository.name }}"
           fi
 
+          # Polling configuration
+          MAX_ATTEMPTS=30
+          POLL_INTERVAL=10
+          ATTEMPT=0
           QUALITY_GATE_STATUS="PENDING"
 
-          if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "" ]; then
-            echo "🔍 Getting Quality Gate for PR #$PR_NUMBER..."
-            QG_RESPONSE=$(curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
-              "https://sonarcloud.io/api/qualitygates/project_status?projectKey=$SONAR_PROJECT_KEY&pullRequest=$PR_NUMBER" 2>/dev/null || echo "")
+          # Function to fetch Quality Gate status
+          fetch_quality_gate() {
+            local pr_num="$1"
+            local project_key="$2"
             
-            if [ -n "$QG_RESPONSE" ] && echo "$QG_RESPONSE" | jq -e '.projectStatus.status' > /dev/null 2>&1; then
-              QUALITY_GATE_STATUS=$(echo "$QG_RESPONSE" | jq -r '.projectStatus.status')
-            else
-              echo "⚠️ PR analysis not ready, using project-level status"
-              QG_RESPONSE=$(curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
-                "https://sonarcloud.io/api/qualitygates/project_status?projectKey=$SONAR_PROJECT_KEY")
-              QUALITY_GATE_STATUS=$(echo "$QG_RESPONSE" | jq -r '.projectStatus.status // "PENDING"')
+            if [ -n "$pr_num" ] && [ "$pr_num" != "" ]; then
+              # Try PR-specific endpoint first
+              local response=$(curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
+                "https://sonarcloud.io/api/qualitygates/project_status?projectKey=$project_key&pullRequest=$pr_num" 2>/dev/null || echo "")
+              
+              if [ -n "$response" ] && echo "$response" | jq -e '.projectStatus.status' > /dev/null 2>&1; then
+                echo "$response" | jq -r '.projectStatus.status'
+                return 0
+              fi
             fi
-          else
-            echo "🔍 Getting Quality Gate for main project..."
-            QG_RESPONSE=$(curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
-              "https://sonarcloud.io/api/qualitygates/project_status?projectKey=$SONAR_PROJECT_KEY")
-            QUALITY_GATE_STATUS=$(echo "$QG_RESPONSE" | jq -r '.projectStatus.status // "PENDING"')
+            
+            # Fallback to project-level status
+            local response=$(curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
+              "https://sonarcloud.io/api/qualitygates/project_status?projectKey=$project_key" 2>/dev/null || echo "")
+            
+            if [ -n "$response" ] && echo "$response" | jq -e '.projectStatus.status' > /dev/null 2>&1; then
+              echo "$response" | jq -r '.projectStatus.status'
+              return 0
+            fi
+            
+            echo "PENDING"
+            return 1
+          }
+
+          # Poll until we get a non-PENDING status or reach max attempts
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            
+            echo "📊 Attempt $ATTEMPT/$MAX_ATTEMPTS - Checking Quality Gate status..."
+            
+            QUALITY_GATE_STATUS=$(fetch_quality_gate "$PR_NUMBER" "$SONAR_PROJECT_KEY")
+            
+            echo "   Status: $QUALITY_GATE_STATUS"
+            
+            # If status is not PENDING or NONE, we have a result
+            if [ "$QUALITY_GATE_STATUS" != "PENDING" ] && [ "$QUALITY_GATE_STATUS" != "NONE" ] && [ -n "$QUALITY_GATE_STATUS" ]; then
+              echo "✅ Quality Gate result received after $((ATTEMPT * POLL_INTERVAL)) seconds"
+              break
+            fi
+            
+            # Don't sleep on the last attempt
+            if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+              echo "   ⏳ Waiting ${POLL_INTERVAL}s before next check..."
+              sleep $POLL_INTERVAL
+            fi
+          done
+
+          if [ $ATTEMPT -eq $MAX_ATTEMPTS ] && [ "$QUALITY_GATE_STATUS" = "PENDING" ]; then
+            echo "⚠️ Quality Gate still pending after $((MAX_ATTEMPTS * POLL_INTERVAL)) seconds"
+            echo "   This might indicate SonarCloud is taking longer than usual to process"
           fi
 
           echo "quality_gate_status=$QUALITY_GATE_STATUS" >> $GITHUB_OUTPUT
-          echo "🔍 Quality Gate Status: $QUALITY_GATE_STATUS"
+          echo "🔍 Final Quality Gate Status: $QUALITY_GATE_STATUS"
 
           if [ "$QUALITY_GATE_STATUS" = "OK" ]; then
             echo "✅ Quality Gate passed!"
@@ -658,9 +698,9 @@ jobs:
           elif [ "$QUALITY_GATE_STATUS" = "WARN" ]; then
             echo "⚠️ Quality Gate passed with warnings"
             echo "quality_gate_result=⚠️ **Quality Gate: PASSED with warnings**" >> $GITHUB_OUTPUT
-          elif [ "$QUALITY_GATE_STATUS" = "PENDING" ]; then
+          elif [ "$QUALITY_GATE_STATUS" = "PENDING" ] || [ "$QUALITY_GATE_STATUS" = "NONE" ]; then
             echo "⏳ Quality Gate is still processing"
-            echo "quality_gate_result=⏳ **Quality Gate: PENDING**" >> $GITHUB_OUTPUT
+            echo "quality_gate_result=⏳ **Quality Gate: PENDING** - Analysis may still be processing" >> $GITHUB_OUTPUT
           else
             echo "❌ Quality Gate failed"
             echo "quality_gate_result=❌ **Quality Gate: FAILED**" >> $GITHUB_OUTPUT
