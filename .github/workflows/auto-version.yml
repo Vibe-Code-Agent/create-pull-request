@@ -64,13 +64,17 @@ jobs:
           export GITHUB_ACTIONS=true
           export GITHUB_ACTOR="${{ github.actor }}"
 
-          # Run the auto version script
+          # Run the auto version script and capture the exit code
+          # We always exit successfully from this step
           if ./scripts/auto-version.sh; then
             echo "version_updated=true" >> $GITHUB_OUTPUT
             echo "✅ Version update completed successfully"
+            exit 0
           else
             echo "version_updated=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ No version update needed"
+            echo "ℹ️ No version update needed - workflow will complete successfully"
+            echo "📋 Subsequent steps will be skipped (no PR creation needed)"
+            exit 0  # Exit successfully even when no update is needed
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
@@ -153,14 +157,22 @@ jobs:
           echo "PR Number: ${{ steps.pr-info.outputs.pr_number }}"
           echo "PR Title: ${{ steps.pr-info.outputs.pr_title }}"
           echo "Version Updated: ${{ steps.version-update.outputs.version_updated }}"
+          echo ""
 
           if [ "${{ steps.version-update.outputs.version_updated }}" = "true" ]; then
-            echo ""
             echo "✅ Version update PR created successfully!"
             echo "🔗 PR URL: ${{ steps.create-pr.outputs.pr_url }}"
-          else
             echo ""
-            echo "ℹ️ No version update was performed"
+            echo "📋 The PR will be auto-merged when CI checks pass"
+          else
+            echo "✅ Workflow completed successfully"
+            echo "ℹ️ No version update was needed for this PR"
+            echo "📋 This is expected behavior - not all PRs require version updates"
+            echo ""
+            echo "💡 Version updates are skipped when:"
+            echo "   - PR is from Dependabot"
+            echo "   - PR title contains 'Auto version update'"
+            echo "   - No changes warrant a version bump"
           fi
 
   # Create tag and release when version update PR is merged
