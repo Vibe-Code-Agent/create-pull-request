@@ -1,47 +1,22 @@
 import { AIProvider } from './base.js';
-import { AI_PROVIDERS } from '../../constants/index.js';
 
 export interface GeneratedPRContent {
   title: string;
   body: string;
-  summary?: string;
+  summary: string;
 }
 
 export class ResponseParser {
-  parseAIResponse(response: any, provider: AIProvider): GeneratedPRContent {
-    const content = this.extractContentFromResponse(response, provider);
+  parseAIResponse(response: any, _provider?: AIProvider): GeneratedPRContent {
+    const content = this.extractContentFromResponse(response);
     return this.parseResponseContent(content);
   }
 
-  private extractContentFromResponse(response: any, provider: AIProvider): string {
-    switch (provider) {
-      case AI_PROVIDERS.CLAUDE:
-        if (!response.content?.[0]?.text) {
-          throw new Error('No content received from Claude API');
-        }
-        return response.content[0].text;
-
-      case AI_PROVIDERS.OPENAI:
-        if (!response.choices?.[0]?.message?.content) {
-          throw new Error('No content received from OpenAI API');
-        }
-        return response.choices[0].message.content;
-
-      case AI_PROVIDERS.GEMINI:
-        if (!response.candidates?.[0]?.content?.parts?.[0]?.text) {
-          throw new Error('No content received from Gemini API');
-        }
-        return response.candidates[0].content.parts[0].text;
-
-      case AI_PROVIDERS.COPILOT:
-        if (!response.choices?.[0]?.message?.content) {
-          throw new Error('No content received from Copilot API');
-        }
-        return response.choices[0].message.content;
-
-      default:
-        throw new Error(`Unknown provider: ${provider}`);
+  private extractContentFromResponse(response: any): string {
+    if (!response.content) {
+      throw new Error('No content received from AI provider');
     }
+    return response.content;
   }
 
   private parseResponseContent(content: string): GeneratedPRContent {
@@ -49,17 +24,25 @@ export class ResponseParser {
     const cleanedContent = this.cleanJSONResponse(content);
     try {
       const parsed = JSON.parse(cleanedContent);
+      const title = parsed.title || this.extractTitle(content) || 'Pull Request';
+      const body = parsed.description || parsed.body || content;
+      // For parsed JSON, if summary is missing, generate it from the body instead of the original content
+      const summary = parsed.summary || this.generateFallbackSummary(body);
+      
       return {
-        title: parsed.title || this.extractTitle(content),
-        body: parsed.description || parsed.body || content,
-        summary: parsed.summary
+        title,
+        body,
+        summary
       };
     } catch {
       // If JSON parsing fails, fall back to text extraction
+      const title = this.extractTitle(content) || 'Pull Request';
+      const summary = this.extractSummary(content) || this.generateFallbackSummary(content);
+      
       return {
-        title: this.extractTitle(content) || 'Pull Request',
+        title,
         body: content,
-        summary: this.extractSummary(content)
+        summary
       };
     }
   }
@@ -108,7 +91,7 @@ export class ResponseParser {
     return null;
   }
 
-  private extractSummary(content: string): string | undefined {
+  private extractSummary(content: string): string | null {
     // Look for summary patterns
     const summaryPatterns = [
       /^Summary:\s*(.+)$/im,
@@ -127,11 +110,57 @@ export class ResponseParser {
     const paragraphs = content.split('\n\n');
     if (paragraphs.length > 0) {
       const firstParagraph = paragraphs[0].trim();
-      if (firstParagraph.length > 20 && firstParagraph.length < 200) {
+      if (firstParagraph.length > 20 && firstParagraph.length < 500) {
         return firstParagraph;
       }
     }
 
-    return undefined;
+    return null;
+  }
+
+  private generateFallbackSummary(content: string): string {
+    // Remove markdown formatting
+    const plainText = content
+      .replace(/```[\s\S]*?```/g, '') // Remove code blocks
+      .replace(/`[^`]+`/g, '') // Remove inline code
+      .replace(/[*_#]+/g, '') // Remove markdown formatting
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove links but keep text
+      .trim();
+
+    // Split into paragraphs and find first meaningful one
+    const paragraphs = plainText.split(/\n\n+/);
+    let summary = '';
+    
+    for (const paragraph of paragraphs) {
+      const trimmed = paragraph.trim();
+      if (trimmed.length > 20) {
+        summary = trimmed;
+        break;
+      }
+    }
+
+    // If no paragraph found, use the whole text
+    if (!summary) {
+      summary = plainText;
+    }
+
+    // If summary is too long, extract first sentence
+    if (summary.length > 300) {
+      const sentences = summary.split(/[.!?](?:\s+|$)/);
+      for (const sentence of sentences) {
+        const trimmed = sentence.trim();
+        if (trimmed.length > 20) {
+          summary = trimmed;
+          break;
+        }
+      }
+    }
+
+    // Limit summary length to 300 characters
+    if (summary.length > 300) {
+      summary = summary.slice(0, 297) + '...';
+    }
+
+    return summary || 'Pull request changes';
   }
 }

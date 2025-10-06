@@ -30,6 +30,7 @@ describe('AIDescriptionGeneratorService', () => {
       reporter: 'Jane Doe',
       created: '2023-01-01T00:00:00.000Z',
       updated: '2023-01-02T00:00:00.000Z',
+      url: 'https://company.atlassian.net/browse/PROJ-123',
       parentTicket: null
     },
     gitChanges: {
@@ -95,15 +96,15 @@ describe('AIDescriptionGeneratorService', () => {
     it('should generate PR description using modular classes', async () => {
       const result = await service.generatePRDescription(mockOptions);
 
-      expect(mockProviderManager.selectProvider).toHaveBeenCalledTimes(2); // Once for summary, once for main generation
-      expect(mockPromptBuilder.buildPrompt).toHaveBeenCalledWith(mockOptions, 'Generated content');
-      expect(mockProviderManager.generateContent).toHaveBeenCalledTimes(2);
+      expect(mockProviderManager.selectProvider).toHaveBeenCalledTimes(1);
+      expect(mockPromptBuilder.buildPrompt).toHaveBeenCalledWith(mockOptions);
+      expect(mockProviderManager.generateContent).toHaveBeenCalledTimes(1);
       expect(mockResponseParser.parseAIResponse).toHaveBeenCalledWith({ content: 'Generated content' }, AI_PROVIDERS.CLAUDE);
 
       expect(result).toEqual({
         title: 'Test Title',
         body: 'Test Body',
-        summary: 'Generated content'
+        summary: 'Test Summary'
       });
     });
 
@@ -130,19 +131,6 @@ describe('AIDescriptionGeneratorService', () => {
 
       await expect(service.generatePRDescription(mockOptions))
         .rejects.toThrow('Response parser error');
-    });
-  });
-
-  describe('generateSummary', () => {
-    it('should generate summary using provider manager', async () => {
-      const summary = await (service as any).generateSummary(mockOptions);
-
-      expect(mockProviderManager.selectProvider).toHaveBeenCalled();
-      expect(mockProviderManager.generateContent).toHaveBeenCalledWith(
-        'Generate a concise summary of the changes in this pull request based on the Jira ticket and file changes. Focus on the key modifications and their purpose.',
-        AI_PROVIDERS.CLAUDE
-      );
-      expect(summary).toBe('Generated content');
     });
   });
 });
