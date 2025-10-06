@@ -9,23 +9,23 @@ on:
 
 jobs:
   auto-version:
-    # Only run when PR is merged or direct push to main, but skip if it's an auto version update PR or dependabot PR
-    if: (github.event_name == 'push') || (github.event.pull_request.merged == true && !contains(github.event.pull_request.title, 'Auto version update') && github.event.pull_request.user.login != 'dependabot[bot]')
+    name: Auto Version Update
+    # Only run when PR is merged, but skip auto version update PRs and dependabot PRs
+    if: |
+      github.event.pull_request.merged == true && 
+      !contains(github.event.pull_request.title, 'Auto version update') && 
+      github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
-
     permissions:
-      contents: write # Needed to push version tags and commits
-      pull-requests: write # Needed to create pull requests
-      issues: write # Needed to create pull requests
+      contents: write
+      pull-requests: write
 
     steps:
       - name: 🔍 Checkout code
         uses: actions/checkout@v4
         with:
-          # Fetch full history for proper git operations
           fetch-depth: 0
-          # Use GitHub token with write permissions
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GH_TOKEN }}
 
       - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
@@ -38,17 +38,21 @@ jobs:
 
       - name: 🔍 Configure Git
         run: |
-          git config user.name "Bradley Nguyen"
-          git config user.email "nguyentruonggiang91@gmail.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: 📋 Get PR Information
         id: pr-info
-        if: github.event_name == 'pull_request'
         run: |
-          echo "pr_number=${{ github.event.number }}" >> $GITHUB_OUTPUT
-          echo "pr_title=${{ github.event.pull_request.title }}" >> $GITHUB_OUTPUT
-          echo "pr_labels=$(echo '${{ toJson(github.event.pull_request.labels.*.name) }}' | jq -r 'join(" ")')" >> $GITHUB_OUTPUT
-          echo "pr_merged=${{ github.event.pull_request.merged }}" >> $GITHUB_OUTPUT
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_LABELS='${{ toJson(github.event.pull_request.labels.*.name) }}'
+
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "pr_title=$PR_TITLE" >> $GITHUB_OUTPUT
+          echo "pr_labels=$(echo "$PR_LABELS" | jq -r 'join(" ")')" >> $GITHUB_OUTPUT
+
+          echo "📋 PR #$PR_NUMBER: $PR_TITLE"
 
       - name: 🏷️ Run auto version update
         id: version-update
@@ -56,7 +60,6 @@ jobs:
           echo "🏷️ Running auto version update script..."
 
           # Set environment variables for the script
-          export GITHUB_TOKEN="${{ secrets.GH_TOKEN }}"
           export CI=true
           export GITHUB_ACTIONS=true
           export GITHUB_ACTOR="${{ github.actor }}"
@@ -70,83 +73,75 @@ jobs:
             echo "ℹ️ No version update needed"
           fi
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
-      - name: 🔀 Create version update branch
+      - name: 🔀 Create version update branch and PR
         if: steps.version-update.outputs.version_updated == 'true'
+        id: create-pr
         run: |
           echo "🔀 Creating version update branch..."
 
           # Create a new branch for the version update
           BRANCH_NAME="auto-version-update-$(date +%Y%m%d-%H%M%S)"
           git checkout -b "$BRANCH_NAME"
-          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
           # Push the branch
           git push origin "$BRANCH_NAME"
           echo "✅ Created and pushed branch $BRANCH_NAME"
 
-      - name: 📋 Create Pull Request
-        if: steps.version-update.outputs.version_updated == 'true'
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GH_TOKEN }}
-          script: |
-            const { data: pullRequest } = await github.rest.pulls.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `🏷️ Auto version update to v${process.env.NEW_VERSION}`,
-              head: process.env.BRANCH_NAME,
-              base: 'main',
-              body: `## 🤖 Automated Version Update
-              
-              This PR was automatically created to update the package version.
-              
-              ### Changes
-              - **Version bump type**: ${process.env.VERSION_TYPE}
-              - **Previous version**: ${process.env.OLD_VERSION}
-              - **New version**: ${process.env.NEW_VERSION}
-              
-              ### Files changed
-              - \`package.json\` - Updated version number
-              - \`package-lock.json\` - Updated lockfile (if applicable)
-              
-              This PR can be safely merged to complete the version update.
-              
-              ### Next steps
-              After merging this PR:
-              1. A git tag \`v${process.env.NEW_VERSION}\` will be created
-              2. A GitHub release will be published
-              3. The publish workflow may be triggered (if configured)
-              
-              ---
-              🤖 Generated automatically by the auto-version workflow`
-            });
+          # Create PR using gh CLI
+          echo "📋 Creating pull request..."
+          PR_BODY="## 🤖 Automated Version Update
 
-            console.log(`✅ Created pull request #${pullRequest.number}`);
-            console.log(`🔗 PR URL: ${pullRequest.html_url}`);
+          This PR was automatically created to update the package version.
 
-            // Enable auto-merge option for the PR
-            try {
-              // Wait a moment for the PR to be fully created
-              await new Promise(resolve => setTimeout(resolve, 3000));
-              
-              // Enable auto-merge with squash method
-              await github.rest.pulls.enableAutoMerge({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_request_number: pullRequest.number,
-                merge_method: 'squash'
-              });
-              
-              console.log(`✅ Auto-merge enabled for PR #${pullRequest.number} with squash method`);
-              console.log(`🔀 PR will be automatically merged when all checks pass`);
-              
-            } catch (error) {
-              console.log(`ℹ️ Could not enable auto-merge: ${error.message}`);
-              console.log(`📋 Please manually review and merge PR #${pullRequest.number}`);
-              console.log(`🔗 PR URL: ${pullRequest.html_url}`);
-            }
+          ### Changes
+          - **Version bump type**: ${VERSION_TYPE:-auto}
+          - **Previous version**: ${OLD_VERSION:-N/A}
+          - **New version**: ${NEW_VERSION:-See package.json}
+
+          ### Files changed
+          - \`package.json\` - Updated version number
+          - \`package-lock.json\` - Updated lockfile (if applicable)
+
+          This PR can be safely merged to complete the version update.
+
+          ### Next steps
+          After merging this PR:
+          1. A git tag will be created
+          2. A GitHub release will be published
+          3. The package may be published to npm (if configured)
+
+          ---
+          🤖 Generated automatically by the auto-version workflow"
+
+          PR_URL=$(gh pr create \
+            --title "🏷️ Auto version update to v${NEW_VERSION:-next}" \
+            --body "$PR_BODY" \
+            --base main \
+            --head "$BRANCH_NAME" \
+            --label "automated" \
+            --label "version-update")
+
+          PR_NUMBER=$(echo "$PR_URL" | grep -oP '\d+$')
+
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
+
+          echo "✅ Created pull request #$PR_NUMBER"
+          echo "🔗 $PR_URL"
+
+          # Enable auto-merge
+          echo "🔄 Enabling auto-merge..."
+          if gh pr merge "$PR_NUMBER" --auto --squash; then
+            echo "✅ Auto-merge enabled successfully"
+            echo "⏳ PR will merge automatically when checks pass"
+          else
+            echo "⚠️ Could not enable auto-merge"
+            echo "📋 Please manually review and merge PR #$PR_NUMBER"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
       - name: 📊 Version Update Summary
         if: always()
@@ -155,22 +150,14 @@ jobs:
           echo "========================"
           echo "Event: ${{ github.event_name }}"
           echo "Branch: ${{ github.ref_name }}"
-
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "PR Number: ${{ github.event.number }}"
-            echo "PR Title: ${{ github.event.pull_request.title }}"
-            echo "PR Merged: ${{ github.event.pull_request.merged }}"
-          fi
-
+          echo "PR Number: ${{ steps.pr-info.outputs.pr_number }}"
+          echo "PR Title: ${{ steps.pr-info.outputs.pr_title }}"
           echo "Version Updated: ${{ steps.version-update.outputs.version_updated }}"
 
-          if [ -n "$OLD_VERSION" ] && [ -n "$NEW_VERSION" ]; then
-            echo "Old Version: $OLD_VERSION"
-            echo "New Version: $NEW_VERSION"
-            echo "Bump Type: $VERSION_TYPE"
-            echo "Git Tag: v$NEW_VERSION"
+          if [ "${{ steps.version-update.outputs.version_updated }}" = "true" ]; then
             echo ""
-            echo "✅ Version successfully updated!"
+            echo "✅ Version update PR created successfully!"
+            echo "🔗 PR URL: ${{ steps.create-pr.outputs.pr_url }}"
           else
             echo ""
             echo "ℹ️ No version update was performed"
@@ -178,9 +165,11 @@ jobs:
 
   # Create tag and release when version update PR is merged
   post-merge-release:
-    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && contains(github.event.pull_request.title, 'Auto version update') && github.event.pull_request.user.login != 'dependabot[bot]'
+    name: Post-Merge Release
+    if: |
+      github.event.pull_request.merged == true && 
+      contains(github.event.pull_request.title, 'Auto version update')
     runs-on: ubuntu-latest
-
     permissions:
       contents: write
 
@@ -190,6 +179,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: 🔍 Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
       - name: 📋 Extract version from package.json
         id: get-version
         run: |
@@ -197,67 +191,80 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "📦 Current version: $VERSION"
 
-      - name: 🏷️ Create Git Tag
+      - name: 🏷️ Create and push Git Tag
+        id: create-tag
         run: |
-          git config user.name "Bradley Nguyen"
-          git config user.email "nguyentruonggiang91@gmail.com"
-
           TAG_NAME="v${{ steps.get-version.outputs.version }}"
 
           # Check if tag already exists
           if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
-            echo "⚠️ Tag $TAG_NAME already exists, skipping tag creation"
+            echo "⚠️ Tag $TAG_NAME already exists"
+            echo "tag_exists=true" >> $GITHUB_OUTPUT
           else
             git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
             git push origin "$TAG_NAME"
             echo "✅ Created and pushed tag $TAG_NAME"
+            echo "tag_exists=false" >> $GITHUB_OUTPUT
           fi
 
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+
       - name: 🏷️ Create GitHub Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-        with:
-          tag_name: v${{ steps.get-version.outputs.version }}
-          release_name: Release v${{ steps.get-version.outputs.version }}
-          body: |
-            ## 🚀 Auto Release v${{ steps.get-version.outputs.version }}
-
-            This release was automatically created when version update PR was merged to main.
-
-            ### What's Changed
-            - Merged PR #${{ github.event.number }}: ${{ github.event.pull_request.title }}
-
-            ### Installation
-            ```bash
-            npm install -g publish-pull-request@${{ steps.get-version.outputs.version }}
-            ```
-
-            ### Usage
-            ```bash
-            create-pr create --jira YOUR-123
-            ```
-
-            For full documentation, see [README.md](https://github.com/${{ github.repository }}/blob/main/README.md)
-          draft: false
-          prerelease: ${{ contains(steps.get-version.outputs.version, '-') }}
-
-  # Optional: Trigger publish workflow after version update
-  trigger-publish:
-    needs: post-merge-release
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && contains(github.event.pull_request.title, 'Auto version update') && github.event.pull_request.user.login != 'dependabot[bot]'
-
-    steps:
-      - name: 🚀 Trigger Publish Workflow
+        if: steps.create-tag.outputs.tag_exists == 'false'
         run: |
-          echo "🚀 Version was updated, consider triggering publish workflow"
-          echo "💡 You can manually trigger the publish workflow from the Actions tab"
-          echo "📦 Or set up automatic publishing by uncommenting the workflow_dispatch below"
+          VERSION="${{ steps.get-version.outputs.version }}"
+          TAG_NAME="${{ steps.create-tag.outputs.tag_name }}"
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          PR_TITLE="${{ github.event.pull_request.title }}"
 
-          # Uncomment the following lines to automatically trigger publish after version update
-          curl -X POST \
-            -H "Accept: application/vnd.github.v3+json" \
-            -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
-            https://api.github.com/repos/${{ github.repository }}/actions/workflows/publish.yml/dispatches \
-            -d '{"ref":"main","inputs":{"version_type":"patch","dry_run":"false"}}'
+          # Determine if this is a prerelease
+          PRERELEASE_FLAG=""
+          if [[ "$VERSION" =~ - ]]; then
+            PRERELEASE_FLAG="--prerelease"
+            echo "📋 Creating prerelease for $TAG_NAME"
+          else
+            echo "📋 Creating release for $TAG_NAME"
+          fi
+
+          # Create release using gh CLI
+          gh release create "$TAG_NAME" \
+            --title "Release $TAG_NAME" \
+            --notes "## 🚀 Release $TAG_NAME
+
+          This release was automatically created when the version update PR was merged.
+
+          ### What's Changed
+          - Merged PR #$PR_NUMBER: $PR_TITLE
+
+          ### Installation
+          \`\`\`bash
+          npm install -g publish-pull-request@$VERSION
+          \`\`\`
+
+          ### Usage
+          \`\`\`bash
+          create-pr create --jira YOUR-123
+          \`\`\`
+
+          For full documentation, see [README.md](https://github.com/${{ github.repository }}/blob/main/README.md)" \
+            $PRERELEASE_FLAG
+
+          echo "✅ GitHub release created successfully"
+          echo "🔗 https://github.com/${{ github.repository }}/releases/tag/$TAG_NAME"
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: 📊 Release Summary
+        if: always()
+        run: |
+          echo "📊 Release Summary"
+          echo "=================="
+          echo "Version: ${{ steps.get-version.outputs.version }}"
+          echo "Tag: ${{ steps.create-tag.outputs.tag_name }}"
+          echo "Tag Already Existed: ${{ steps.create-tag.outputs.tag_exists }}"
+
+          if [ "${{ steps.create-tag.outputs.tag_exists }}" = "false" ]; then
+            echo "✅ New release created successfully"
+          else
+            echo "ℹ️ Tag already existed, skipped release creation"
+          fi

@@ -473,8 +473,9 @@ jobs:
             echo "✅ No TODO/FIXME comments found"
           fi
 
-  # Trigger SonarCloud analysis when all CI jobs pass
-  trigger-sonarcloud:
+  # SonarCloud Analysis - runs after all CI jobs pass
+  sonarcloud:
+    name: SonarCloud Analysis
     runs-on: ubuntu-latest
     needs: [validate, security, code-quality, compatibility, report]
     if: |
@@ -483,73 +484,317 @@ jobs:
       needs.code-quality.result == 'success' && 
       needs.compatibility.result == 'success' &&
       needs.report.result == 'success'
-
-    permissions:
-      actions: write
-      contents: read
+    outputs:
+      quality_gate_status: ${{ steps.quality-gate.outputs.quality_gate_status }}
+      quality_gate_result: ${{ steps.quality-gate.outputs.quality_gate_result }}
+      bugs: ${{ steps.sonar-metrics.outputs.bugs }}
+      vulnerabilities: ${{ steps.sonar-metrics.outputs.vulnerabilities }}
+      security_hotspots: ${{ steps.sonar-metrics.outputs.security_hotspots }}
+      code_smells: ${{ steps.sonar-metrics.outputs.code_smells }}
+      coverage: ${{ steps.sonar-metrics.outputs.coverage }}
+      duplicated_lines: ${{ steps.sonar-metrics.outputs.duplicated_lines }}
+      lines_of_code: ${{ steps.sonar-metrics.outputs.lines_of_code }}
 
     steps:
-      - name: 🚀 Trigger SonarCloud Analysis
-        uses: actions/github-script@v7
+      - name: Show trigger information
+        run: |
+          echo "🔍 SonarCloud Analysis Information"
+          echo "=========================================="
+          echo "Event: ${{ github.event_name }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "PR Number: ${{ github.event.pull_request.number }}"
+            echo "PR Head: ${{ github.event.pull_request.head.ref }}"
+            echo "PR Base: ${{ github.event.pull_request.base.ref }}"
+          fi
+          echo ""
+
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          github-token: ${{ secrets.GH_TOKEN }}
-          script: |
-            const { owner, repo } = context.repo;
-            const ref = context.ref;
+          # Full git history is needed for SonarCloud
+          fetch-depth: 0
 
-            // Determine the source branch and PR number for SonarCloud
-            let sourceBranch;
-            let prNumber = '';
+      - name: Download coverage artifacts from CI
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report-20
+          path: coverage/
+        continue-on-error: true
 
-            if (ref.startsWith('refs/pull/')) {
-              // For pull requests, we need to get the source branch from the PR
-              // Since we're in a PR context, we can use the head ref
-              sourceBranch = context.payload.pull_request.head.ref;
-              prNumber = context.payload.pull_request.number.toString();
-              console.log(`🔍 Pull request detected, using source branch: ${sourceBranch}`);
-              console.log(`🔍 PR Number: ${prNumber}`);
-            } else if (context.eventName === 'pull_request') {
-              // Alternative PR detection
-              sourceBranch = context.payload.pull_request.head.ref;
-              prNumber = context.payload.pull_request.number.toString();
-              console.log(`🔍 Pull request event detected, using source branch: ${sourceBranch}`);
-              console.log(`🔍 PR Number: ${prNumber}`);
-            } else {
-              // For direct branch pushes, use the branch name
-              sourceBranch = ref.replace('refs/heads/', '');
-              console.log(`🔍 Branch push detected, using branch: ${sourceBranch}`);
-              console.log(`🔍 No PR number available for branch push`);
-            }
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
 
-            console.log(`🚀 Triggering SonarCloud analysis for ${owner}/${repo}@${sourceBranch}`);
-            console.log(`📊 All CI jobs completed successfully, including report job`);
-            console.log(`🔍 Original ref: ${ref}, Source branch: ${sourceBranch}`);
+      - name: Install dependencies
+        run: npm ci
 
-             // Method 3: Direct API call using fetch (similar to curl command)
-                console.log('🔍 Attempting direct API call to workflow file...');
-                console.log('🔑 Using GH_TOKEN from secrets');
-                const apiResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/sonarcloud.yml/dispatches`, {
-                  method: 'POST',
-                  headers: {
-                    'Accept': 'application/vnd.github+json',
-                    'Authorization': `Bearer ${{ secrets.GH_TOKEN }}`,
-                    'X-GitHub-Api-Version': '2022-11-28'
-                  },
-                  body: JSON.stringify({
-                    ref: sourceBranch,
-                    inputs: {
-                      triggered_by: 'ci-pipeline',
-                      pr_number: prNumber,
-                      ci_run_id: context.runId.toString()
-                    }
-                  })
-                });
-                
-                if (apiResponse.ok) {
-                  console.log('✅ Direct API call successful');
-                  console.log(`📋 Response status: ${apiResponse.status}`);
-                } else {
-                  const errorText = await apiResponse.text();
-                  console.log(`❌ Direct API call failed: ${apiResponse.status} - ${errorText}`);
-                  throw new Error(`All trigger methods failed. Last error: ${apiResponse.status}`);
-                }
+      - name: Build project
+        run: npm run build
+
+      - name: Generate coverage if artifact not found
+        run: |
+          if [ ! -f "coverage/lcov.info" ]; then
+            echo "⚠️ Coverage artifact not found, generating coverage locally..."
+            npm test -- --coverage --watchAll=false
+            echo "✅ Coverage generated locally"
+          else
+            echo "✅ Using coverage from CI artifact"
+          fi
+
+      - name: Verify coverage file exists
+        run: |
+          if [ -f "coverage/lcov.info" ]; then
+            echo "✅ Coverage file found: coverage/lcov.info"
+            echo "Coverage file size: $(wc -l < coverage/lcov.info) lines"
+          else
+            echo "❌ Coverage file not found: coverage/lcov.info"
+            echo "Available files in coverage directory:"
+            ls -la coverage/ || echo "Coverage directory does not exist"
+            exit 1
+          fi
+
+      - name: Prepare SonarCloud arguments
+        id: sonar-args
+        run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+
+          # Get SonarCloud configuration from sonar-project.properties
+          echo "🔧 Reading SonarCloud configuration..."
+
+          if [ -f "sonar-project.properties" ]; then
+            SONAR_PROJECT_KEY=$(grep "^sonar.projectKey=" sonar-project.properties | cut -d'=' -f2 | tr -d ' ')
+            SONAR_ORGANIZATION=$(grep "^sonar.organization=" sonar-project.properties | cut -d'=' -f2 | tr -d ' ')
+            echo "✅ Found sonar-project.properties"
+            echo "  Project Key: $SONAR_PROJECT_KEY"
+            echo "  Organization: $SONAR_ORGANIZATION"
+          else
+            SONAR_PROJECT_KEY="${{ github.event.repository.name }}"
+            SONAR_ORGANIZATION="${{ github.repository_owner }}"
+            echo "⚠️ Using GitHub context fallback"
+          fi
+
+          # Base arguments
+          BASE_ARGS="-Dsonar.projectKey=$SONAR_PROJECT_KEY -Dsonar.organization=$SONAR_ORGANIZATION"
+
+          if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "" ]; then
+            # PR-specific analysis
+            echo "🔍 Configuring for PR #$PR_NUMBER analysis"
+            PR_HEAD="${{ github.event.pull_request.head.ref }}"
+            PR_BASE="${{ github.event.pull_request.base.ref }}"
+            
+            echo "📋 PR Details:"
+            echo "  PR Number: $PR_NUMBER"
+            echo "  Head branch: $PR_HEAD"
+            echo "  Base branch: $PR_BASE"
+            
+            PR_ARGS="-Dsonar.pullrequest.key=$PR_NUMBER -Dsonar.pullrequest.branch=$PR_HEAD -Dsonar.pullrequest.base=$PR_BASE"
+            SONAR_ARGS="$BASE_ARGS $PR_ARGS"
+            echo "✅ Using PR-specific analysis mode"
+          else
+            # Full project analysis
+            echo "🔍 Using full project analysis"
+            SONAR_ARGS="$BASE_ARGS"
+          fi
+
+          echo "sonar_args=$SONAR_ARGS" >> $GITHUB_OUTPUT
+          echo "📋 SonarCloud arguments: $SONAR_ARGS"
+
+      - name: SonarCloud Scan
+        id: sonarcloud-scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: ${{ steps.sonar-args.outputs.sonar_args }}
+        continue-on-error: true
+
+      - name: Wait for SonarCloud Quality Gate
+        id: quality-gate
+        run: |
+          echo "⏳ Polling SonarCloud for Quality Gate result..."
+
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+
+          if [ -f "sonar-project.properties" ]; then
+            SONAR_PROJECT_KEY=$(grep "^sonar.projectKey=" sonar-project.properties | cut -d'=' -f2 | tr -d ' ')
+          else
+            SONAR_PROJECT_KEY="${{ github.event.repository.name }}"
+          fi
+
+          # Polling configuration
+          MAX_ATTEMPTS=30
+          POLL_INTERVAL=10
+          ATTEMPT=0
+          QUALITY_GATE_STATUS="PENDING"
+
+          # Function to fetch Quality Gate status
+          fetch_quality_gate() {
+            local pr_num="$1"
+            local project_key="$2"
+            
+            if [ -n "$pr_num" ] && [ "$pr_num" != "" ]; then
+              # Try PR-specific endpoint first
+              local response=$(curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
+                "https://sonarcloud.io/api/qualitygates/project_status?projectKey=$project_key&pullRequest=$pr_num" 2>/dev/null || echo "")
+              
+              if [ -n "$response" ] && echo "$response" | jq -e '.projectStatus.status' > /dev/null 2>&1; then
+                echo "$response" | jq -r '.projectStatus.status'
+                return 0
+              fi
+            fi
+            
+            # Fallback to project-level status
+            local response=$(curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
+              "https://sonarcloud.io/api/qualitygates/project_status?projectKey=$project_key" 2>/dev/null || echo "")
+            
+            if [ -n "$response" ] && echo "$response" | jq -e '.projectStatus.status' > /dev/null 2>&1; then
+              echo "$response" | jq -r '.projectStatus.status'
+              return 0
+            fi
+            
+            echo "PENDING"
+            return 1
+          }
+
+          # Poll until we get a non-PENDING status or reach max attempts
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            
+            echo "📊 Attempt $ATTEMPT/$MAX_ATTEMPTS - Checking Quality Gate status..."
+            
+            QUALITY_GATE_STATUS=$(fetch_quality_gate "$PR_NUMBER" "$SONAR_PROJECT_KEY")
+            
+            echo "   Status: $QUALITY_GATE_STATUS"
+            
+            # If status is not PENDING or NONE, we have a result
+            if [ "$QUALITY_GATE_STATUS" != "PENDING" ] && [ "$QUALITY_GATE_STATUS" != "NONE" ] && [ -n "$QUALITY_GATE_STATUS" ]; then
+              echo "✅ Quality Gate result received after $((ATTEMPT * POLL_INTERVAL)) seconds"
+              break
+            fi
+            
+            # Don't sleep on the last attempt
+            if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+              echo "   ⏳ Waiting ${POLL_INTERVAL}s before next check..."
+              sleep $POLL_INTERVAL
+            fi
+          done
+
+          if [ $ATTEMPT -eq $MAX_ATTEMPTS ] && [ "$QUALITY_GATE_STATUS" = "PENDING" ]; then
+            echo "⚠️ Quality Gate still pending after $((MAX_ATTEMPTS * POLL_INTERVAL)) seconds"
+            echo "   This might indicate SonarCloud is taking longer than usual to process"
+          fi
+
+          echo "quality_gate_status=$QUALITY_GATE_STATUS" >> $GITHUB_OUTPUT
+          echo "🔍 Final Quality Gate Status: $QUALITY_GATE_STATUS"
+
+          if [ "$QUALITY_GATE_STATUS" = "OK" ]; then
+            echo "✅ Quality Gate passed!"
+            echo "quality_gate_result=✅ **Quality Gate: PASSED**" >> $GITHUB_OUTPUT
+          elif [ "$QUALITY_GATE_STATUS" = "WARN" ]; then
+            echo "⚠️ Quality Gate passed with warnings"
+            echo "quality_gate_result=⚠️ **Quality Gate: PASSED with warnings**" >> $GITHUB_OUTPUT
+          elif [ "$QUALITY_GATE_STATUS" = "PENDING" ] || [ "$QUALITY_GATE_STATUS" = "NONE" ]; then
+            echo "⏳ Quality Gate is still processing"
+            echo "quality_gate_result=⏳ **Quality Gate: PENDING** - Analysis may still be processing" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Quality Gate failed"
+            echo "quality_gate_result=❌ **Quality Gate: FAILED**" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get SonarCloud metrics
+        id: sonar-metrics
+        run: |
+          echo "📊 Fetching SonarCloud metrics..."
+
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+
+          if [ -f "sonar-project.properties" ]; then
+            SONAR_PROJECT_KEY=$(grep "^sonar.projectKey=" sonar-project.properties | cut -d'=' -f2 | tr -d ' ')
+          else
+            SONAR_PROJECT_KEY="${{ github.event.repository.name }}"
+          fi
+
+          METRICS=""
+
+          if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "" ]; then
+            echo "🎯 Fetching metrics for PR #$PR_NUMBER..."
+            METRICS=$(curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
+              "https://sonarcloud.io/api/measures/component?component=$SONAR_PROJECT_KEY&pullRequest=$PR_NUMBER&metricKeys=bugs,vulnerabilities,security_hotspots,code_smells,coverage,duplicated_lines_density,ncloc" 2>/dev/null || echo "")
+            
+            if [ -z "$METRICS" ] || ! echo "$METRICS" | jq -e '.component' > /dev/null 2>&1; then
+              echo "⚠️ PR metrics not available, using main project metrics"
+              METRICS=$(curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
+                "https://sonarcloud.io/api/measures/component?component=$SONAR_PROJECT_KEY&metricKeys=bugs,vulnerabilities,security_hotspots,code_smells,coverage,duplicated_lines_density,ncloc")
+            fi
+          else
+            echo "📊 Fetching metrics for main project..."
+            METRICS=$(curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
+              "https://sonarcloud.io/api/measures/component?component=$SONAR_PROJECT_KEY&metricKeys=bugs,vulnerabilities,security_hotspots,code_smells,coverage,duplicated_lines_density,ncloc")
+          fi
+
+          if [ -n "$METRICS" ] && echo "$METRICS" | jq -e '.component.measures' > /dev/null 2>&1; then
+            BUGS=$(echo "$METRICS" | jq -r '.component.measures[]? | select(.metric=="bugs") | .value // "0"')
+            VULNERABILITIES=$(echo "$METRICS" | jq -r '.component.measures[]? | select(.metric=="vulnerabilities") | .value // "0"')
+            SECURITY_HOTSPOTS=$(echo "$METRICS" | jq -r '.component.measures[]? | select(.metric=="security_hotspots") | .value // "0"')
+            CODE_SMELLS=$(echo "$METRICS" | jq -r '.component.measures[]? | select(.metric=="code_smells") | .value // "0"')
+            COVERAGE=$(echo "$METRICS" | jq -r '.component.measures[]? | select(.metric=="coverage") | .value // "0"')
+            DUPLICATED_LINES=$(echo "$METRICS" | jq -r '.component.measures[]? | select(.metric=="duplicated_lines_density") | .value // "0"')
+            LINES_OF_CODE=$(echo "$METRICS" | jq -r '.component.measures[]? | select(.metric=="ncloc") | .value // "0"')
+          else
+            BUGS="0"
+            VULNERABILITIES="0"
+            SECURITY_HOTSPOTS="0"
+            CODE_SMELLS="0"
+            COVERAGE="0"
+            DUPLICATED_LINES="0"
+            LINES_OF_CODE="0"
+          fi
+
+          echo "📋 Metrics:"
+          echo "  Bugs: $BUGS"
+          echo "  Vulnerabilities: $VULNERABILITIES"
+          echo "  Security Hotspots: $SECURITY_HOTSPOTS"
+          echo "  Code Smells: $CODE_SMELLS"
+          echo "  Coverage: $COVERAGE%"
+
+          echo "bugs=$BUGS" >> $GITHUB_OUTPUT
+          echo "vulnerabilities=$VULNERABILITIES" >> $GITHUB_OUTPUT
+          echo "security_hotspots=$SECURITY_HOTSPOTS" >> $GITHUB_OUTPUT
+          echo "code_smells=$CODE_SMELLS" >> $GITHUB_OUTPUT
+          echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
+          echo "duplicated_lines=$DUPLICATED_LINES" >> $GITHUB_OUTPUT
+          echo "lines_of_code=$LINES_OF_CODE" >> $GITHUB_OUTPUT
+
+  # Quality Gate Check - final validation
+  quality-gate:
+    name: Quality Gate Check
+    runs-on: ubuntu-latest
+    needs: sonarcloud
+    if: always() && needs.sonarcloud.result != 'cancelled'
+
+    steps:
+      - name: Quality Gate Status Summary
+        run: |
+          QUALITY_GATE_STATUS="${{ needs.sonarcloud.outputs.quality_gate_status }}"
+          SONARCLOUD_RESULT="${{ needs.sonarcloud.result }}"
+
+          echo "🔍 SonarCloud job result: $SONARCLOUD_RESULT"
+          echo "🔍 Quality Gate status: $QUALITY_GATE_STATUS"
+
+          if [ "$SONARCLOUD_RESULT" = "failure" ]; then
+            echo "❌ SonarCloud scan encountered issues, but workflow will continue"
+          elif [ "$QUALITY_GATE_STATUS" = "ERROR" ] || [ "$QUALITY_GATE_STATUS" = "FAILED" ]; then
+            echo "❌ Quality Gate failed, but workflow will continue"
+          elif [ "$QUALITY_GATE_STATUS" = "WARN" ]; then
+            echo "⚠️ Quality Gate passed with warnings"
+          else
+            echo "✅ Quality Gate passed!"
+          fi
+
+          echo "📊 SonarCloud analysis completed"
+          echo "🔗 View report: https://sonarcloud.io/project/overview?id=create-pull-request"
