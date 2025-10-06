@@ -190,8 +190,11 @@ describe('PromptBuilder', () => {
             expect(prompt).toContain('What was changed in the file');
             expect(prompt).toContain('Why this change was necessary');
             expect(prompt).toContain('How it relates to the Jira ticket description');
+            expect(prompt).toContain('**MUST explain how this change resolves the issue mentioned in the ticket**');
+            expect(prompt).toContain('Connect the code change to the problem/issue described in the Jira ticket');
             expect(prompt).toContain('Format: Use markdown links like [filename:L123-L145](URL) for line-specific changes');
             expect(prompt).toContain('Example: [src/utils/auth.ts:L45-L67](https://github.com/.../auth.ts#L45-L67)');
+            expect(prompt).toContain('**DO NOT** include any checklists (- [ ], - [x]) in the description');
         });
 
         it('should include critical requirements section', () => {
@@ -200,9 +203,13 @@ describe('PromptBuilder', () => {
             expect(prompt).toContain('### Critical Requirements:');
             expect(prompt).toContain('Title MUST begin with "PROJ-123:"');
             expect(prompt).toContain('Summary MUST NOT include testing/verification steps or proposed changes');
+            expect(prompt).toContain('**DO NOT include any checklists** (- [ ] or - [x]) anywhere in the description');
+            expect(prompt).toContain('Use prose and paragraphs instead of checklists for all content');
             expect(prompt).toContain('File changes MUST include URLs to specific line changes (not just file URLs)');
             expect(prompt).toContain('Use line-specific URLs from the context (e.g., file.ts#L10-L20)');
             expect(prompt).toContain('File changes MUST be explained in detail, not just listed');
+            expect(prompt).toContain('**MUST explain how each change resolves the issue mentioned in the ticket**');
+            expect(prompt).toContain('Explicitly connect each code change to the problem/issue described in the ticket');
             expect(prompt).toContain('Use markdown links [filename:L10-L20](URL) when referencing specific code changes');
             expect(prompt).toContain('Changes MUST match and reference the Jira ticket description');
         });
