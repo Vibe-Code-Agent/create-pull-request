@@ -9,41 +9,10 @@ import { AIDescriptionGeneratorService } from '../services/ai-description-genera
 import { validateJiraTicket, validateGitRepository, extractJiraTicketFromBranch } from '../utils/validation.js';
 import { CONFIG } from '../constants/index.js';
 
-export interface CreatePROptions {
-  jira?: string;
-  base?: string;
-  title?: string;
-  dryRun?: boolean;
-  draft?: boolean;
-}
+import { CreatePROptions, GeneratePRDescriptionParams, GenerateOptions } from '../interface/commands.js';
 
-interface GeneratePRDescriptionParams {
-  aiDescriptionService: AIDescriptionGeneratorService;
-  spinner: ReturnType<typeof createSpinner>;
-  jiraTicket: any;
-  gitChanges: any;
-  template: any;
-  diffContent: string;
-  prTitle?: string;
-  repoInfo: {
-    owner: string;
-    repo: string;
-    currentBranch: string;
-  };
-}
-
-interface GenerateOptions {
-  jiraTicket: any;
-  gitChanges: any;
-  template: any;
-  diffContent: string;
-  prTitle?: string;
-  repoInfo: {
-    owner: string;
-    repo: string;
-    currentBranch: string;
-  };
-}
+// Re-export for backward compatibility
+export type { CreatePROptions, GeneratePRDescriptionParams, GenerateOptions };
 
 /**
  * Format error message from error object
@@ -86,11 +55,11 @@ async function generateDescription(
   options: GenerateOptions
 ): Promise<any> {
   const result = await aiDescriptionService.generatePRDescription(options);
-  
+
   if (!result) {
     throw new Error('Failed to generate PR description - AI service returned null or undefined');
   }
-  
+
   return result;
 }
 
@@ -120,7 +89,7 @@ async function retryAIDescriptionGeneration(
 
       console.log(chalk.yellow(`⚠️  Attempt ${attempt} failed: ${getErrorMessage(retryError)}`));
       const shouldContinue = await askToContinueRetry(attempt, maxRetries);
-      
+
       if (!shouldContinue) {
         throw retryError;
       }
@@ -344,7 +313,7 @@ export async function createPullRequest(options: CreatePROptions): Promise<void>
 
     let action = '';
     let regenerationCount = 0;
-    
+
     // Loop to allow regeneration
     while (action !== 'create' && action !== 'edit' && action !== 'cancel') {
       // Show generated content for review

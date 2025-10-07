@@ -1,10 +1,6 @@
 import { AIProvider } from './base.js';
 
-export interface GeneratedPRContent {
-  title: string;
-  body: string;
-  summary: string;
-}
+import { GeneratedPRContent } from '../../interface/ai.js';
 
 export class ResponseParser {
   parseAIResponse(response: any, _provider?: AIProvider): GeneratedPRContent {
@@ -28,7 +24,7 @@ export class ResponseParser {
       const body = parsed.description || parsed.body || content;
       // For parsed JSON, if summary is missing, generate it from the body instead of the original content
       const summary = parsed.summary || this.generateFallbackSummary(body);
-      
+
       return {
         title,
         body,
@@ -38,7 +34,7 @@ export class ResponseParser {
       // If JSON parsing fails, fall back to text extraction
       const title = this.extractTitle(content) || 'Pull Request';
       const summary = this.extractSummary(content) || this.generateFallbackSummary(content);
-      
+
       return {
         title,
         body: content,
@@ -130,7 +126,7 @@ export class ResponseParser {
     // Split into paragraphs and find first meaningful one
     const paragraphs = plainText.split(/\n\n+/);
     let summary = '';
-    
+
     for (const paragraph of paragraphs) {
       const trimmed = paragraph.trim();
       if (trimmed.length > 20) {

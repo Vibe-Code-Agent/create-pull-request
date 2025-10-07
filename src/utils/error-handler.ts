@@ -72,22 +72,7 @@ export function createValidationError(message: string): AppError {
   return new AppError(message, ERROR_CODES.VALIDATION_ERROR);
 }
 
-// Types for error details
-export interface ErrorDetails {
-  type: string;
-  statusCode?: number;
-  statusText?: string;
-  url?: string;
-  responseData?: any;
-  code?: string;
-  message?: string;
-}
-
-// Extended error interface
-export interface ExtendedError extends Error {
-  code?: string;
-  details?: any;
-}
+import { ErrorDetails, ExtendedError } from '../interface/utils.js';
 
 export function createError(message: string, code?: string, details?: any): ExtendedError {
   const error = new Error(message) as ExtendedError;

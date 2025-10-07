@@ -26,9 +26,13 @@ export declare const LIMITS: {
 };
 export declare const HTTP_STATUS: {
     readonly OK: 200;
+    readonly BAD_REQUEST: 400;
     readonly UNAUTHORIZED: 401;
     readonly FORBIDDEN: 403;
     readonly NOT_FOUND: 404;
+    readonly UNPROCESSABLE_ENTITY: 422;
+    readonly TOO_MANY_REQUESTS: 429;
+    readonly INTERNAL_SERVER_ERROR: 500;
 };
 export declare const CONFIG: {
     readonly DIRECTORY_NAME: ".create-pr";

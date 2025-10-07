@@ -2,11 +2,7 @@ import axios, { AxiosInstance } from 'axios';
 import { getConfig } from '../../utils/config.js';
 import { HEADERS, HTTP_STATUS, LIMITS } from '../../constants/index.js';
 
-export interface AtlassianConfig {
-    baseUrl: string;
-    username: string;
-    apiToken: string;
-}
+import { AtlassianConfig } from '../../interface/atlassian.js';
 
 export abstract class BaseAtlassianService {
     protected readonly client: AxiosInstance;

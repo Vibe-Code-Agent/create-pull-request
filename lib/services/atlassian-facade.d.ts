@@ -1,28 +1,4 @@
-export interface ConfluencePage {
-    id: string;
-    title: string;
-    content: string;
-    url: string;
-}
-export interface JiraTicket {
-    key: string;
-    summary: string;
-    description: string;
-    issueType: string;
-    status: string;
-    assignee: string | null;
-    reporter: string;
-    created: string;
-    updated: string;
-    url: string;
-    parentTicket?: {
-        key: string;
-        summary: string;
-        issueType: string;
-        url: string;
-    } | null;
-    confluencePages?: ConfluencePage[];
-}
+import { ConfluencePage, JiraTicket } from '../interface/atlassian.js';
 export declare class JiraService {
     private readonly jiraService;
     private readonly confluenceService;

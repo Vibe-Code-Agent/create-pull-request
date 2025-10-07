@@ -1,26 +1,10 @@
 import { simpleGit, SimpleGit } from 'simple-git';
 import { CONFIG, LIMITS } from '../constants/index.js';
 
-export interface FileChange {
-  file: string;
-  status: 'added' | 'modified' | 'deleted' | 'renamed';
-  insertions: number;
-  deletions: number;
-  changes: number;
-  diffContent?: string;
-  lineNumbers?: {
-    added: number[];
-    removed: number[];
-  };
-}
+import { FileChange, GitChanges } from '../interface/git.js';
 
-export interface GitChanges {
-  files: FileChange[];
-  totalInsertions: number;
-  totalDeletions: number;
-  totalFiles: number;
-  commits: string[];
-}
+// Re-export for backward compatibility
+export type { FileChange, GitChanges };
 
 export class GitService {
   private readonly git: SimpleGit;
