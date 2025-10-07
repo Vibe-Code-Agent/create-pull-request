@@ -1,10 +1,5 @@
 import { BaseAtlassianService } from './base.js';
-export interface ConfluencePage {
-    id: string;
-    title: string;
-    content: string;
-    url: string;
-}
+import { ConfluencePage } from '../../interface/atlassian.js';
 export declare class ConfluenceService extends BaseAtlassianService {
     constructor();
     /**

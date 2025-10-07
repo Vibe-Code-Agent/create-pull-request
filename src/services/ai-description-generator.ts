@@ -1,24 +1,10 @@
-import { JiraTicket } from './atlassian-facade.js';
-import { GitChanges } from './git.js';
-import { PullRequestTemplate } from './github.js';
 import { AIProviderManager } from './ai-providers/manager.js';
 import { PromptBuilder } from './ai-providers/prompt-builder.js';
-import { ResponseParser, GeneratedPRContent } from './ai-providers/response-parser.js';
+import { ResponseParser } from './ai-providers/response-parser.js';
+import { GenerateDescriptionOptions, GeneratedPRContent } from '../interface/ai.js';
 
-export { GeneratedPRContent } from './ai-providers/response-parser.js';
-
-export interface GenerateDescriptionOptions {
-  jiraTicket: JiraTicket;
-  gitChanges: GitChanges;
-  template?: PullRequestTemplate;
-  diffContent?: string;
-  prTitle?: string;
-  repoInfo?: {
-    owner: string;
-    repo: string;
-    currentBranch: string;
-  };
-}
+// Re-export interfaces for backward compatibility
+export type { GenerateDescriptionOptions, GeneratedPRContent } from '../interface/ai.js';
 
 export class AIDescriptionGeneratorService {
   private readonly providerManager: AIProviderManager;

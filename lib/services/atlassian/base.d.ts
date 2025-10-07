@@ -1,9 +1,5 @@
 import { AxiosInstance } from 'axios';
-export interface AtlassianConfig {
-    baseUrl: string;
-    username: string;
-    apiToken: string;
-}
+import { AtlassianConfig } from '../../interface/atlassian.js';
 export declare abstract class BaseAtlassianService {
     protected readonly client: AxiosInstance;
     protected readonly config: AtlassianConfig;

@@ -1,18 +1,5 @@
-import { JiraTicket } from '../atlassian-facade.js';
-import { GitChanges } from '../git.js';
-import { PullRequestTemplate } from '../github.js';
-export interface PromptBuilderOptions {
-    jiraTicket: JiraTicket;
-    gitChanges: GitChanges;
-    template?: PullRequestTemplate;
-    diffContent?: string;
-    prTitle?: string;
-    repoInfo?: {
-        owner: string;
-        repo: string;
-        currentBranch: string;
-    };
-}
+import { PromptBuilderOptions } from '../../interface/ai.js';
+export type { PromptBuilderOptions } from '../../interface/ai.js';
 export declare class PromptBuilder {
     buildPrompt(options: PromptBuilderOptions): string;
     private buildPromptHeader;

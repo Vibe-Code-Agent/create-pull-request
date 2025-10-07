@@ -1,18 +1,9 @@
 import axios, { AxiosInstance } from 'axios';
-import { LIMITS, HEADERS, AI_PROVIDERS } from '../../constants/index.js';
+import { LIMITS, HEADERS, HTTP_STATUS } from '../../constants/index.js';
+import { AIResponse, AIProvider } from '../../interface/ai.js';
 
-export type AIProvider = typeof AI_PROVIDERS[keyof typeof AI_PROVIDERS];
-
-export interface AIConfig {
-  provider: AIProvider;
-  apiKey: string;
-  model?: string;
-}
-
-export interface AIResponse {
-  content: string;
-  provider: AIProvider;
-}
+// Re-export interfaces for backward compatibility
+export type { AIResponse, AIProvider } from '../../interface/ai.js';
 
 export abstract class BaseAIProvider {
   protected readonly client: AxiosInstance;
@@ -59,11 +50,11 @@ export abstract class BaseAIProvider {
       const status = error.response.status;
       const message = error.response.data?.error?.message || error.message;
 
-      if (status === 401) {
+      if (status === HTTP_STATUS.UNAUTHORIZED) {
         throw new Error(`Authentication failed for ${this.provider}. Please check your API key.`);
-      } else if (status === 429) {
+      } else if (status === HTTP_STATUS.TOO_MANY_REQUESTS) {
         throw new Error(`Rate limit exceeded for ${this.provider}. Please try again later.`);
-      } else if (status === 500) {
+      } else if (status === HTTP_STATUS.INTERNAL_SERVER_ERROR) {
         throw new Error(`${this.provider} API server error. Please try again later.`);
       } else {
         throw new Error(`${this.provider} API error: ${message}`);

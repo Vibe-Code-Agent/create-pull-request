@@ -1,22 +1,5 @@
 import { BaseAtlassianService } from './base.js';
-export interface JiraTicket {
-    key: string;
-    summary: string;
-    description: string;
-    issueType: string;
-    status: string;
-    assignee: string | null;
-    reporter: string;
-    created: string;
-    updated: string;
-    url: string;
-    parentTicket?: {
-        key: string;
-        summary: string;
-        issueType: string;
-        url: string;
-    } | null;
-}
+import { JiraTicket } from '../../interface/atlassian.js';
 export declare class JiraService extends BaseAtlassianService {
     constructor();
     getTicket(ticketKey: string): Promise<JiraTicket>;

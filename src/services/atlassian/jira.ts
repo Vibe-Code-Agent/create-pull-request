@@ -1,24 +1,7 @@
 import { BaseAtlassianService } from './base.js';
 import { API_URLS, JIRA_ENDPOINTS } from '../../constants/index.js';
 
-export interface JiraTicket {
-    key: string;
-    summary: string;
-    description: string;
-    issueType: string;
-    status: string;
-    assignee: string | null;
-    reporter: string;
-    created: string;
-    updated: string;
-    url: string;
-    parentTicket?: {
-        key: string;
-        summary: string;
-        issueType: string;
-        url: string;
-    } | null;
-}
+import { JiraTicket } from '../../interface/atlassian.js';
 
 export class JiraService extends BaseAtlassianService {
     constructor() {
@@ -86,7 +69,7 @@ export class JiraService extends BaseAtlassianService {
      */
     private buildJiraTicket(issue: any, fields: any, parentTicket: any): JiraTicket {
         const ticketUrl = this.buildJiraTicketUrl(issue.key);
-        
+
         // Extract description safely - handle both string and object formats
         let description = '';
         if (fields.description) {
@@ -99,7 +82,7 @@ export class JiraService extends BaseAtlassianService {
                 description = JSON.stringify(fields.description);
             }
         }
-        
+
         return {
             key: issue.key,
             summary: fields.summary,

@@ -1,33 +1,7 @@
 import { JiraService as AtlassianJiraService } from './atlassian/jira.js';
 import { ConfluenceService } from './atlassian/confluence.js';
 
-// Re-export interfaces for backward compatibility
-export interface ConfluencePage {
-  id: string;
-  title: string;
-  content: string;
-  url: string;
-}
-
-export interface JiraTicket {
-  key: string;
-  summary: string;
-  description: string;
-  issueType: string;
-  status: string;
-  assignee: string | null;
-  reporter: string;
-  created: string;
-  updated: string;
-  url: string;
-  parentTicket?: {
-    key: string;
-    summary: string;
-    issueType: string;
-    url: string;
-  } | null;
-  confluencePages?: ConfluencePage[];
-}
+import { ConfluencePage, JiraTicket } from '../interface/atlassian.js';
 
 export class JiraService {
   private readonly jiraService: AtlassianJiraService;

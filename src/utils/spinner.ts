@@ -1,13 +1,8 @@
 import chalk from 'chalk';
+import { Spinner } from '../interface/utils.js';
 
-export interface Spinner {
-  start(text?: string): Spinner;
-  stop(): Spinner;
-  succeed(text?: string): Spinner;
-  fail(text?: string): Spinner;
-  text: string;
-  isSpinning: boolean;
-}
+// Re-export interfaces for backward compatibility
+export type { Spinner } from '../interface/utils.js';
 
 class SimpleSpinner implements Spinner {
   private _text: string = '';

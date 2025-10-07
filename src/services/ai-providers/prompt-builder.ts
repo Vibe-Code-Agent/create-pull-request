@@ -1,19 +1,10 @@
-import { JiraTicket } from '../atlassian-facade.js';
-import { GitChanges, FileChange } from '../git.js';
-import { PullRequestTemplate } from '../github.js';
+import { JiraTicket } from '../../interface/atlassian.js';
+import { GitChanges, FileChange } from '../../interface/git.js';
+import { PullRequestTemplate } from '../../interface/github.js';
+import { PromptBuilderOptions } from '../../interface/ai.js';
 
-export interface PromptBuilderOptions {
-  jiraTicket: JiraTicket;
-  gitChanges: GitChanges;
-  template?: PullRequestTemplate;
-  diffContent?: string;
-  prTitle?: string;
-  repoInfo?: {
-    owner: string;
-    repo: string;
-    currentBranch: string;
-  };
-}
+// Re-export for backward compatibility
+export type { PromptBuilderOptions } from '../../interface/ai.js';
 
 export class PromptBuilder {
   buildPrompt(options: PromptBuilderOptions): string {
@@ -153,7 +144,7 @@ export class PromptBuilder {
   private buildInstructionsSection(jiraTicket: JiraTicket, template?: PullRequestTemplate): string {
     let prompt = `\n## Instructions:\n`;
     prompt += `Please generate a comprehensive pull request description following these guidelines:\n\n`;
-    
+
     // Template-specific instructions
     if (template) {
       prompt += `### 🎯 CRITICAL: Template Structure Requirements\n`;
@@ -169,13 +160,13 @@ export class PromptBuilder {
       prompt += `8. The template structure is MANDATORY and takes precedence over any other formatting preferences\n\n`;
       prompt += `⚠️ **Template sections must appear in the description field with their exact headings and structure.**\n\n`;
     }
-    
+
     prompt += `### Title Requirements:\n`;
     prompt += `- **MUST** start with the Jira ticket key: "${jiraTicket.key}"\n`;
     prompt += `- Format: "${jiraTicket.key}: [Clear, descriptive title summarizing the change]"\n`;
     prompt += `- Example: "${jiraTicket.key}: Implement user authentication with OAuth2"\n`;
     prompt += `- Keep it concise but descriptive (max 72 characters)\n\n`;
-    
+
     prompt += `### Summary Requirements:\n`;
     prompt += `- Provide a concise overview of what was changed and why\n`;
     prompt += `- Focus on the key modifications and their purpose\n`;
@@ -184,7 +175,7 @@ export class PromptBuilder {
     prompt += `- **DO NOT** include testing steps, verification steps, or proposed changes\n`;
     prompt += `- **DO NOT** include instructions on how to test or verify the changes\n`;
     prompt += `- Focus only on what was implemented, not on future steps\n\n`;
-    
+
     prompt += `### Description Requirements:\n`;
     if (template) {
       prompt += `**IMPORTANT: The description MUST follow the template structure provided above.**\n`;
@@ -210,7 +201,7 @@ export class PromptBuilder {
       prompt += `7. **Template Sections**: Map the above information to the appropriate sections in the template\n`;
     }
     prompt += `\n`;
-    
+
     prompt += `### Critical Requirements:\n`;
     if (template) {
       prompt += `- **HIGHEST PRIORITY: Follow the template structure exactly as provided**\n`;
@@ -230,7 +221,7 @@ export class PromptBuilder {
     prompt += `- Explicitly connect each code change to the problem/issue described in the ticket\n`;
     prompt += `- Use markdown links [filename:L10-L20](URL) when referencing specific code changes\n`;
     prompt += `- Connect code changes to business requirements from the ticket\n\n`;
-    
+
     prompt += `Format your response as JSON with the following structure:\n`;
     prompt += `\`\`\`json\n`;
     prompt += `{\n`;

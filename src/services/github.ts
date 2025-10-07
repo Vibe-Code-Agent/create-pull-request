@@ -4,24 +4,10 @@ import { getConfig } from '../utils/config.js';
 import { FILE_PATHS, REGEX_PATTERNS, HEADERS, HTTP_STATUS, LIMITS, CONFIG } from '../constants/index.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { GitHubRepo, PullRequest, PullRequestTemplate } from '../interface/github.js';
 
-export interface GitHubRepo {
-  owner: string;
-  repo: string;
-}
-
-export interface PullRequest {
-  title: string;
-  body: string;
-  head: string;
-  base: string;
-  draft?: boolean;
-}
-
-export interface PullRequestTemplate {
-  name: string;
-  content: string;
-}
+// Re-export interfaces for backward compatibility
+export type { GitHubRepo, PullRequest, PullRequestTemplate } from '../interface/github.js';
 
 export class GitHubService {
   private readonly octokit: Octokit;
@@ -155,7 +141,7 @@ export class GitHubService {
       } else if (error.status === HTTP_STATUS.NOT_FOUND) {
         // Repository not found - this is a valid case where we should return null
         return null;
-      } else if (error.status === 422) {
+      } else if (error.status === HTTP_STATUS.UNPROCESSABLE_ENTITY) {
         // Invalid branch name or other validation error - return null as this is expected
         return null;
       }
@@ -229,9 +215,9 @@ export class GitHubService {
       return response.data;
     } catch (error: any) {
       // Handle specific error cases
-      if (error.status === 401) {
+      if (error.status === HTTP_STATUS.UNAUTHORIZED) {
         throw new Error('Authentication failed. Please check your GitHub token.');
-      } else if (error.status === 403) {
+      } else if (error.status === HTTP_STATUS.FORBIDDEN) {
         throw new Error('Access denied. Please check your GitHub token permissions.');
       } else {
         throw new Error(`GitHub API error: ${error.message}`);
