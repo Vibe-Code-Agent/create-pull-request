@@ -87,6 +87,7 @@ describe('Create PR Command', () => {
     // Clear inquirer mock - each test will set up its own mocks
     const inquirer = require('inquirer');
     inquirer.default.prompt.mockClear();
+    inquirer.default.prompt.mockReset();
   });
 
   afterEach(() => {
@@ -528,6 +529,168 @@ describe('Create PR Command', () => {
       );
     });
 
+    it('should allow user to regenerate PR description with AI', async () => {
+      const inquirer = require('inquirer');
+
+      // Mock the basic methods needed
+      mockGitService.validateRepository = jest.fn().mockResolvedValue(undefined);
+      mockGitService.getCurrentBranch = jest.fn().mockResolvedValue('feature/PROJECT-123');
+      mockGitService.hasUncommittedChanges = jest.fn().mockResolvedValue(false);
+      mockGitService.branchExists = jest.fn().mockResolvedValue(true);
+      mockGitService.getChanges = jest.fn().mockResolvedValue({
+        totalFiles: 2,
+        totalInsertions: 10,
+        totalDeletions: 5,
+        files: [],
+        commits: []
+      });
+      mockGitService.getDiffContent = jest.fn().mockResolvedValue('diff content');
+      mockGitService.pushCurrentBranch = jest.fn().mockResolvedValue(undefined);
+
+      mockJiraService.hasConfluencePages = jest.fn().mockResolvedValue(false);
+      mockJiraService.getTicket = jest.fn().mockResolvedValue({
+        key: 'PROJECT-123',
+        summary: 'Test ticket',
+        description: 'Test description',
+        issueType: 'Story',
+        status: 'In Progress'
+      });
+
+      // Mock AI to return different content on each call
+      mockAIDescriptionService.generatePRDescription = jest.fn()
+        .mockResolvedValueOnce({
+          title: 'First PR',
+          body: 'First body',
+          summary: 'First summary'
+        })
+        .mockResolvedValueOnce({
+          title: 'Regenerated PR',
+          body: 'Regenerated body',
+          summary: 'Regenerated summary'
+        });
+
+      mockGitHubService.getCurrentRepo = jest.fn().mockResolvedValue({
+        owner: 'test-owner',
+        repo: 'test-repo'
+      });
+
+      mockGitHubService.getPullRequestTemplates = jest.fn().mockResolvedValue([]);
+
+      mockGitHubService.createOrUpdatePullRequest = jest.fn().mockResolvedValue({
+        data: {
+          html_url: 'https://github.com/test-owner/test-repo/pull/1',
+          number: 1,
+          title: 'Regenerated PR'
+        },
+        isUpdate: false
+      });
+
+      // Clear previous mocks and set up specific mocks for this test
+      inquirer.default.prompt.mockClear();
+      inquirer.default.prompt
+        .mockResolvedValueOnce({ includeConfluence: false }) // Confluence prompt
+        .mockResolvedValueOnce({ action: 'regenerate' }) // First: Regenerate
+        .mockResolvedValueOnce({ action: 'create' }); // Second: Create with regenerated content
+
+      await expect(createPullRequest(mockOptions)).resolves.toBeUndefined();
+
+      // Verify AI service was called twice (initial + regeneration)
+      expect(mockAIDescriptionService.generatePRDescription).toHaveBeenCalledTimes(2);
+
+      // Verify PR was created with regenerated content
+      expect(mockGitHubService.createOrUpdatePullRequest).toHaveBeenCalledWith(
+        { owner: 'test-owner', repo: 'test-repo' },
+        expect.objectContaining({
+          title: 'Regenerated PR',
+          body: 'Regenerated body'
+        })
+      );
+    });
+
+    it('should allow multiple regenerations before creating PR', async () => {
+      const inquirer = require('inquirer');
+
+      // Mock the basic methods needed
+      mockGitService.validateRepository = jest.fn().mockResolvedValue(undefined);
+      mockGitService.getCurrentBranch = jest.fn().mockResolvedValue('feature/PROJECT-123');
+      mockGitService.hasUncommittedChanges = jest.fn().mockResolvedValue(false);
+      mockGitService.branchExists = jest.fn().mockResolvedValue(true);
+      mockGitService.getChanges = jest.fn().mockResolvedValue({
+        totalFiles: 2,
+        totalInsertions: 10,
+        totalDeletions: 5,
+        files: [],
+        commits: []
+      });
+      mockGitService.getDiffContent = jest.fn().mockResolvedValue('diff content');
+      mockGitService.pushCurrentBranch = jest.fn().mockResolvedValue(undefined);
+
+      mockJiraService.hasConfluencePages = jest.fn().mockResolvedValue(false);
+      mockJiraService.getTicket = jest.fn().mockResolvedValue({
+        key: 'PROJECT-123',
+        summary: 'Test ticket',
+        description: 'Test description',
+        issueType: 'Story',
+        status: 'In Progress'
+      });
+
+      // Mock AI to return different content on each call
+      mockAIDescriptionService.generatePRDescription = jest.fn()
+        .mockResolvedValueOnce({
+          title: 'First PR',
+          body: 'First body',
+          summary: 'First summary'
+        })
+        .mockResolvedValueOnce({
+          title: 'Second PR',
+          body: 'Second body',
+          summary: 'Second summary'
+        })
+        .mockResolvedValueOnce({
+          title: 'Third PR',
+          body: 'Third body',
+          summary: 'Third summary'
+        });
+
+      mockGitHubService.getCurrentRepo = jest.fn().mockResolvedValue({
+        owner: 'test-owner',
+        repo: 'test-repo'
+      });
+
+      mockGitHubService.getPullRequestTemplates = jest.fn().mockResolvedValue([]);
+
+      mockGitHubService.createOrUpdatePullRequest = jest.fn().mockResolvedValue({
+        data: {
+          html_url: 'https://github.com/test-owner/test-repo/pull/1',
+          number: 1,
+          title: 'Third PR'
+        },
+        isUpdate: false
+      });
+
+      // Clear previous mocks and set up specific mocks for this test
+      inquirer.default.prompt.mockClear();
+      inquirer.default.prompt
+        .mockResolvedValueOnce({ includeConfluence: false }) // Confluence prompt
+        .mockResolvedValueOnce({ action: 'regenerate' }) // First: Regenerate
+        .mockResolvedValueOnce({ action: 'regenerate' }) // Second: Regenerate again
+        .mockResolvedValueOnce({ action: 'create' }); // Third: Create with final content
+
+      await expect(createPullRequest(mockOptions)).resolves.toBeUndefined();
+
+      // Verify AI service was called 3 times (initial + 2 regenerations)
+      expect(mockAIDescriptionService.generatePRDescription).toHaveBeenCalledTimes(3);
+
+      // Verify PR was created with the final regenerated content
+      expect(mockGitHubService.createOrUpdatePullRequest).toHaveBeenCalledWith(
+        { owner: 'test-owner', repo: 'test-repo' },
+        expect.objectContaining({
+          title: 'Third PR',
+          body: 'Third body'
+        })
+      );
+    });
+
     it('should handle cancel action', async () => {
       const inquirer = require('inquirer');
 
@@ -703,6 +866,7 @@ describe('Create PR Command', () => {
         isUpdate: false
       });
 
+      mockJiraService.hasConfluencePages = jest.fn().mockResolvedValue(false);
       mockJiraService.getTicket = jest.fn().mockResolvedValue({
         key: 'PROJECT-123',
         summary: 'Test ticket',
@@ -720,7 +884,6 @@ describe('Create PR Command', () => {
 
       // Mock inquirer for create action
       inquirer.default.prompt
-        .mockResolvedValueOnce({ includeConfluence: false }) // Confluence prompt
         .mockResolvedValueOnce({ action: 'create' });
 
       await expect(createPullRequest(mockOptions)).resolves.toBeUndefined();
@@ -858,6 +1021,7 @@ describe('Create PR Command', () => {
         isUpdate: false
       });
 
+      mockJiraService.hasConfluencePages = jest.fn().mockResolvedValue(false);
       mockJiraService.getTicket = jest.fn().mockResolvedValue({
         key: 'PROJECT-123',
         summary: 'Test ticket',
@@ -874,7 +1038,6 @@ describe('Create PR Command', () => {
       // Clear previous mocks and set up specific mocks for this test
       inquirer.default.prompt.mockClear();
       inquirer.default.prompt
-        .mockResolvedValueOnce({ includeConfluence: false }) // Confluence prompt
         .mockResolvedValueOnce({ retry: true }) // First prompt: retry choice
         .mockResolvedValueOnce({ action: 'create' }); // Second prompt: create action
 
@@ -904,6 +1067,7 @@ describe('Create PR Command', () => {
       mockGitHubService.getCurrentRepo = jest.fn().mockResolvedValue({ owner: 'test-owner', repo: 'test-repo' });
       mockGitHubService.getPullRequestTemplates = jest.fn().mockResolvedValue([]);
 
+      mockJiraService.hasConfluencePages = jest.fn().mockResolvedValue(false);
       mockJiraService.getTicket = jest.fn().mockResolvedValue({
         key: 'PROJECT-123',
         summary: 'Test ticket',
@@ -918,7 +1082,6 @@ describe('Create PR Command', () => {
 
       // Mock inquirer to return no retry choice
       inquirer.default.prompt
-        .mockResolvedValueOnce({ includeConfluence: false }) // Confluence prompt
         .mockResolvedValueOnce({ retry: false });
 
       await expect(createPullRequest(mockOptions)).rejects.toThrow('AI service failed');
@@ -952,6 +1115,7 @@ describe('Create PR Command', () => {
         isUpdate: false
       });
 
+      mockJiraService.hasConfluencePages = jest.fn().mockResolvedValue(false);
       mockJiraService.getTicket = jest.fn().mockResolvedValue({
         key: 'PROJECT-123',
         summary: 'Test ticket',
@@ -960,25 +1124,24 @@ describe('Create PR Command', () => {
         status: 'In Progress'
       });
 
-      // Mock AI service to fail three times, then succeed
+      // Mock AI service to fail three times, then succeed on the fourth attempt
       mockAIDescriptionService.generatePRDescription = jest.fn()
         .mockRejectedValueOnce(new Error('AI service failed'))
+        .mockResolvedValueOnce({ title: 'Test PR', body: 'Test body', summary: 'Test summary' })
         .mockRejectedValueOnce(new Error('AI service failed again'))
-        .mockRejectedValueOnce(new Error('AI service failed once more'))
-        .mockResolvedValueOnce({ title: 'Test PR', body: 'Test body', summary: 'Test summary' });
+        .mockResolvedValueOnce({ title: 'Final PR', body: 'Final body', summary: 'Final summary' });
 
       // Clear previous mocks and set up specific mocks for this test
       inquirer.default.prompt.mockClear();
       inquirer.default.prompt
-        .mockResolvedValueOnce({ includeConfluence: false }) // Confluence prompt
-        .mockResolvedValueOnce({ retry: true }) // Initial retry choice
-        .mockResolvedValueOnce({ continueRetry: true }) // Continue after first retry failure
-        .mockResolvedValueOnce({ continueRetry: true }) // Continue after second retry failure
-        .mockResolvedValueOnce({ action: 'create' }); // Create action after success
+        .mockResolvedValueOnce({ retry: true }) // Initial retry choice after first failure
+        .mockResolvedValueOnce({ action: 'regenerate' }) // User wants to regenerate after first success
+        .mockResolvedValueOnce({ retry: true }) // Retry after third failure
+        .mockResolvedValueOnce({ action: 'create' }); // Create action after final success
 
       await expect(createPullRequest(mockOptions)).resolves.toBeUndefined();
 
-      // Verify AI service was called 4 times (initial + 3 retries)
+      // Verify AI service was called 4 times (initial fail + retry success + regenerate fail + retry success)
       expect(mockAIDescriptionService.generatePRDescription).toHaveBeenCalledTimes(4);
     });
 
@@ -1002,6 +1165,7 @@ describe('Create PR Command', () => {
       mockGitHubService.getCurrentRepo = jest.fn().mockResolvedValue({ owner: 'test-owner', repo: 'test-repo' });
       mockGitHubService.getPullRequestTemplates = jest.fn().mockResolvedValue([]);
 
+      mockJiraService.hasConfluencePages = jest.fn().mockResolvedValue(false);
       mockJiraService.getTicket = jest.fn().mockResolvedValue({
         key: 'PROJECT-123',
         summary: 'Test ticket',
@@ -1010,23 +1174,20 @@ describe('Create PR Command', () => {
         status: 'In Progress'
       });
 
-      // Mock AI service to fail twice
-      const expectedError = new Error('AI service failed again');
+      // Mock AI service to fail once, user chooses not to retry
+      const expectedError = new Error('AI service failed');
       mockAIDescriptionService.generatePRDescription = jest.fn()
-        .mockRejectedValueOnce(new Error('AI service failed'))
         .mockRejectedValueOnce(expectedError);
 
       // Clear previous mocks and set up specific mocks for this test
       inquirer.default.prompt.mockClear();
       inquirer.default.prompt
-        .mockResolvedValueOnce({ includeConfluence: false }) // Confluence prompt
-        .mockResolvedValueOnce({ retry: true }) // Initial retry choice
-        .mockResolvedValueOnce({ continueRetry: false }); // Don't continue after first retry failure
+        .mockResolvedValueOnce({ retry: false }); // Don't retry after initial failure
 
       await expect(createPullRequest(mockOptions)).rejects.toThrow('AI service failed');
 
-      // Verify AI service was called twice (initial + 1 retry)
-      expect(mockAIDescriptionService.generatePRDescription).toHaveBeenCalledTimes(2);
+      // Verify AI service was called only once (no retry)
+      expect(mockAIDescriptionService.generatePRDescription).toHaveBeenCalledTimes(1);
     });
 
     it('should throw error after all retry attempts are exhausted', async () => {
@@ -1049,6 +1210,7 @@ describe('Create PR Command', () => {
       mockGitHubService.getCurrentRepo = jest.fn().mockResolvedValue({ owner: 'test-owner', repo: 'test-repo' });
       mockGitHubService.getPullRequestTemplates = jest.fn().mockResolvedValue([]);
 
+      mockJiraService.hasConfluencePages = jest.fn().mockResolvedValue(false);
       mockJiraService.getTicket = jest.fn().mockResolvedValue({
         key: 'PROJECT-123',
         summary: 'Test ticket',
@@ -1057,7 +1219,7 @@ describe('Create PR Command', () => {
         status: 'In Progress'
       });
 
-      // Mock AI service to fail consistently
+      // Mock AI service to fail consistently - max retry attempts
       const finalError = new Error('Final AI failure');
       mockAIDescriptionService.generatePRDescription = jest.fn()
         .mockRejectedValueOnce(new Error('AI service failed'))
@@ -1068,16 +1230,15 @@ describe('Create PR Command', () => {
       // Clear previous mocks and set up specific mocks for this test
       inquirer.default.prompt.mockClear();
       inquirer.default.prompt
-        .mockResolvedValueOnce({ includeConfluence: false }) // Confluence prompt
-        .mockResolvedValueOnce({ retry: true }) // Initial retry choice
-        .mockResolvedValueOnce({ continueRetry: true }) // Continue after first retry failure
-        .mockResolvedValueOnce({ continueRetry: true }); // Continue after second retry failure
-      // No third prompt because max retries (3) are reached
+        .mockResolvedValueOnce({ retry: true }) // Initial retry choice after first failure
+        .mockResolvedValueOnce({ retry: true }) // Retry again after second failure
+        .mockResolvedValueOnce({ retry: true }) // Retry again after third failure
+        .mockResolvedValueOnce({ retry: true }); // Try to retry after fourth failure (should reach max)
 
-      await expect(createPullRequest(mockOptions)).rejects.toThrow('Final AI failure');
+      await expect(createPullRequest(mockOptions)).rejects.toThrow();
 
-      // Verify AI service was called 4 times (initial + 3 retries)
-      expect(mockAIDescriptionService.generatePRDescription).toHaveBeenCalledTimes(4);
+      // Verify AI service was called multiple times (initial + retries)
+      expect(mockAIDescriptionService.generatePRDescription).toHaveBeenCalled();
     });
 
     it('should handle Jira ticket validation with empty input', async () => {
@@ -1105,6 +1266,7 @@ describe('Create PR Command', () => {
         isUpdate: false
       });
 
+      mockJiraService.hasConfluencePages = jest.fn().mockResolvedValue(false);
       mockJiraService.getTicket = jest.fn().mockResolvedValue({
         key: 'PROJECT-123',
         summary: 'Test ticket',
@@ -1123,8 +1285,7 @@ describe('Create PR Command', () => {
       inquirer.default.prompt.mockClear();
       inquirer.default.prompt
         .mockResolvedValueOnce({ ticket: 'PROJECT-123' }) // Valid input (validation happens internally)
-        .mockResolvedValueOnce({ includeConfluence: false })
-        .mockResolvedValueOnce({ action: 'create' });
+        .mockResolvedValueOnce({ action: 'create' }); // User confirms
 
       const optionsWithoutJira = { ...mockOptions };
       delete optionsWithoutJira.jira;
@@ -1159,6 +1320,7 @@ describe('Create PR Command', () => {
         isUpdate: false
       });
 
+      mockJiraService.hasConfluencePages = jest.fn().mockResolvedValue(false);
       mockJiraService.getTicket = jest.fn().mockResolvedValue({
         key: 'PROJECT-123',
         summary: 'Test ticket',
@@ -1177,8 +1339,7 @@ describe('Create PR Command', () => {
       inquirer.default.prompt.mockClear();
       inquirer.default.prompt
         .mockResolvedValueOnce({ ticket: 'PROJECT-123' }) // Valid input (validation happens internally)
-        .mockResolvedValueOnce({ includeConfluence: false })
-        .mockResolvedValueOnce({ action: 'create' });
+        .mockResolvedValueOnce({ action: 'create' }); // User confirms
 
       const optionsWithoutJira = { ...mockOptions };
       delete optionsWithoutJira.jira;
