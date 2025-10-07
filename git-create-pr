@@ -3,12 +3,17 @@
 // Git extension wrapper for create-pr
 // This allows using 'git create-pr' instead of just 'create-pr'
 
-const { spawn } = require('child_process');
-const path = require('path');
+import { spawn } from 'child_process';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Get __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Get the directory where this script is located
 const scriptDir = __dirname;
-const createPrScript = path.join(scriptDir, 'bin', 'create-pr');
+const createPrScript = path.join(scriptDir, 'bin', 'create-pr.js');
 
 // Forward all arguments to the original create-pr script
 const args = process.argv.slice(2);
@@ -16,7 +21,7 @@ const args = process.argv.slice(2);
 // Spawn the create-pr command with all arguments
 const child = spawn('node', [createPrScript, ...args], {
   stdio: 'inherit',
-  shell: true
+  shell: process.platform === 'win32'
 });
 
 // Handle process events

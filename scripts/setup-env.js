@@ -1,57 +1,69 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const chalk = require('chalk');
-const { setupGitExtension } = require('./setup-git-extension');
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import chalk from 'chalk';
+import { fileURLToPath } from 'url';
+import { setupGitExtension } from './setup-git-extension.js';
+
+// Get __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // For inquirer v12+, we need to use dynamic import since it's an ES module
 let inquirer;
 
 async function loadInquirer() {
-  if (!inquirer) {
-    try {
-      // Dynamic import for ES module
-      const inquirerModule = await import('inquirer');
-      inquirer = inquirerModule.default || inquirerModule;
-    } catch (error) {
-      console.error(chalk.red('❌ Error loading inquirer:'), error.message);
-      console.error(chalk.yellow('Please try: npm install inquirer'));
-      process.exit(1);
+    if (!inquirer) {
+        try {
+            // Dynamic import for ES module
+            const inquirerModule = await import('inquirer');
+            inquirer = inquirerModule.default || inquirerModule;
+        } catch (error) {
+            console.error(chalk.red('❌ Error loading inquirer:'), error.message);
+            console.error(chalk.yellow('Please try: npm install inquirer'));
+            process.exit(1);
+        }
     }
-  }
-  return inquirer;
+    return inquirer;
 }
 
 // Import constants from compiled JavaScript
-const { CONFIG, DEFAULT_MODELS, SYSTEM } = require('../lib/constants');
+let CONFIG, DEFAULT_MODELS, SYSTEM;
 
-// Configuration constants
-const CONFIG_DIRECTORY_NAME = CONFIG.DIRECTORY_NAME;
-const CONFIG_FILE_NAME = CONFIG.FILE_NAME;
-const DEFAULT_CLAUDE_MODEL = DEFAULT_MODELS.CLAUDE;
-const DEFAULT_GPT_MODEL = DEFAULT_MODELS.OPENAI;
-const DEFAULT_GEMINI_MODEL = DEFAULT_MODELS.GEMINI;
-const CONFIG_VERSION = CONFIG.VERSION;
-const EXECUTABLE_PERMISSIONS = SYSTEM.EXECUTABLE_PERMISSIONS;
+async function loadConstants() {
+    if (!CONFIG) {
+        const constants = await import('../lib/constants/index.js');
+        CONFIG = constants.CONFIG;
+        DEFAULT_MODELS = constants.DEFAULT_MODELS;
+        SYSTEM = constants.SYSTEM;
+    }
+    return { CONFIG, DEFAULT_MODELS, SYSTEM };
+}
 
-function getConfigFilePath() {
-    return path.join(os.homedir(), CONFIG_DIRECTORY_NAME, CONFIG_FILE_NAME);
+// Configuration constants will be loaded dynamically
+
+async function getConfigFilePath() {
+    await loadConstants();
+    return path.join(os.homedir(), CONFIG.DIRECTORY_NAME, CONFIG.FILE_NAME);
 }
 
 async function setupEnvironment() {
     console.log(chalk.blue('🚀 Environment Setup Wizard'));
-    
-    // Load inquirer first
+
+    // Load constants first
+    await loadConstants();
+
+    // Load inquirer
     await loadInquirer();
     console.log(chalk.gray('This will collect your environment configuration and save it for global use.\n'));
 
     // Load existing configuration if available
     let existingConfig = null;
     try {
-        if (configExists()) {
-            existingConfig = loadConfig();
+        if (await configExists()) {
+            existingConfig = await loadConfig();
             console.log(chalk.green('✅ Found existing configuration. Using current values as defaults.\n'));
         }
     } catch (error) {
@@ -119,10 +131,10 @@ async function setupEnvironment() {
                 { name: 'Skip AI provider setup', value: 'none' }
             ],
             default: existingConfig?.aiProviders?.claude ? 'claude' :
-                     existingConfig?.aiProviders?.openai ? 'openai' :
-                     existingConfig?.aiProviders?.gemini ? 'gemini' :
-                     existingConfig?.aiProviders?.copilot || existingConfig?.copilot?.apiToken ? 'copilot' :
-                     'claude'
+                existingConfig?.aiProviders?.openai ? 'openai' :
+                    existingConfig?.aiProviders?.gemini ? 'gemini' :
+                        existingConfig?.aiProviders?.copilot || existingConfig?.copilot?.apiToken ? 'copilot' :
+                            'claude'
         },
         {
             type: 'password',
@@ -146,7 +158,7 @@ async function setupEnvironment() {
             name: 'claudeModel',
             message: 'Enter Claude model to use:',
             when: (answers) => answers.aiProvider === 'claude',
-            default: existingConfig?.aiProviders?.claude?.model || DEFAULT_CLAUDE_MODEL
+            default: existingConfig?.aiProviders?.claude?.model || DEFAULT_MODELS.CLAUDE
         },
         {
             type: 'password',
@@ -170,7 +182,7 @@ async function setupEnvironment() {
             name: 'openaiModel',
             message: 'Enter OpenAI model to use:',
             when: (answers) => answers.aiProvider === 'openai',
-            default: existingConfig?.aiProviders?.openai?.model || DEFAULT_GPT_MODEL
+            default: existingConfig?.aiProviders?.openai?.model || DEFAULT_MODELS.OPENAI
         },
         {
             type: 'password',
@@ -194,7 +206,7 @@ async function setupEnvironment() {
             name: 'geminiModel',
             message: 'Enter Gemini model to use:',
             when: (answers) => answers.aiProvider === 'gemini',
-            default: existingConfig?.aiProviders?.gemini?.model || DEFAULT_GEMINI_MODEL
+            default: existingConfig?.aiProviders?.gemini?.model || DEFAULT_MODELS.GEMINI
         },
         {
             type: 'password',
@@ -219,7 +231,7 @@ async function setupEnvironment() {
             name: 'copilotModel',
             message: 'Enter Copilot model to use:',
             when: (answers) => answers.aiProvider === 'copilot',
-            default: existingConfig?.aiProviders?.copilot?.model || DEFAULT_GPT_MODEL
+            default: existingConfig?.aiProviders?.copilot?.model || DEFAULT_MODELS.COPILOT
         },
         {
             type: 'input',
@@ -243,9 +255,9 @@ async function setupEnvironment() {
 
     try {
         const answers = await inquirer.prompt(questions);
-        
+
         // Create config directory if it doesn't exist
-        const configDir = path.dirname(getConfigFilePath());
+        const configDir = path.dirname(await getConfigFilePath());
         if (!fs.existsSync(configDir)) {
             fs.mkdirSync(configDir, { recursive: true });
         }
@@ -275,34 +287,34 @@ async function setupEnvironment() {
         if (answers.aiProvider === 'claude') {
             config.aiProviders.claude = {
                 apiKey: answers.claudeApiKey || existingConfig?.aiProviders?.claude?.apiKey,
-                model: answers.claudeModel || existingConfig?.aiProviders?.claude?.model || DEFAULT_CLAUDE_MODEL
+                model: answers.claudeModel || existingConfig?.aiProviders?.claude?.model || DEFAULT_MODELS.CLAUDE
             };
         } else if (answers.aiProvider === 'openai') {
             config.aiProviders.openai = {
                 apiKey: answers.openaiApiKey || existingConfig?.aiProviders?.openai?.apiKey,
-                model: answers.openaiModel || existingConfig?.aiProviders?.openai?.model || DEFAULT_GPT_MODEL
+                model: answers.openaiModel || existingConfig?.aiProviders?.openai?.model || DEFAULT_MODELS.OPENAI
             };
         } else if (answers.aiProvider === 'gemini') {
             config.aiProviders.gemini = {
                 apiKey: answers.geminiApiKey || existingConfig?.aiProviders?.gemini?.apiKey,
-                model: answers.geminiModel || existingConfig?.aiProviders?.gemini?.model || DEFAULT_GEMINI_MODEL
+                model: answers.geminiModel || existingConfig?.aiProviders?.gemini?.model || DEFAULT_MODELS.GEMINI
             };
         } else if (answers.aiProvider === 'copilot') {
             const copilotToken = answers.copilotApiToken || existingConfig?.aiProviders?.copilot?.apiToken || existingConfig?.copilot?.apiToken;
             config.aiProviders.copilot = {
                 apiToken: copilotToken,
-                model: answers.copilotModel || existingConfig?.aiProviders?.copilot?.model || DEFAULT_GPT_MODEL
+                model: answers.copilotModel || existingConfig?.aiProviders?.copilot?.model || DEFAULT_MODELS.COPILOT
             };
             // Also keep the legacy copilot config for backward compatibility
             config.copilot.apiToken = copilotToken;
         }
 
         // Save configuration to JSON file
-        fs.writeFileSync(getConfigFilePath(), JSON.stringify(config, null, 2));
+        fs.writeFileSync(await getConfigFilePath(), JSON.stringify(config, null, 2));
 
         console.log(chalk.green('\n✅ Environment configuration saved successfully!'));
-        console.log(chalk.gray(`Global configuration saved to: ${getConfigFilePath()}`));
-        
+        console.log(chalk.gray(`Global configuration saved to: ${await getConfigFilePath()}`));
+
         // Also create .env file for backward compatibility
         let envContent = `# Generated by setup-env.js on ${new Date().toISOString()}
 JIRA_BASE_URL=${config.jira.baseUrl}
@@ -350,7 +362,7 @@ GEMINI_MODEL=${config.aiProviders.gemini.model}
 
         if (config.aiProviders.copilot || config.copilot.apiToken) {
             const token = config.aiProviders.copilot?.apiToken || config.copilot.apiToken;
-            const model = config.aiProviders.copilot?.model || DEFAULT_GPT_MODEL;
+            const model = config.aiProviders.copilot?.model || DEFAULT_MODELS.COPILOT;
             envContent += `COPILOT_API_TOKEN=${token}
 COPILOT_MODEL=${model}
 `;
@@ -377,7 +389,7 @@ COPILOT_MODEL=${model}
         }
 
         console.log(chalk.yellow('\n⚠️  Security Note: Your global configuration contains sensitive tokens. Keep it secure and do not share it.'));
-        
+
     } catch (error) {
         console.error(chalk.red('\n❌ Error during setup:'), error.message);
         process.exit(1);
@@ -385,13 +397,14 @@ COPILOT_MODEL=${model}
 }
 
 // Helper function to load configuration
-function loadConfig() {
-    if (!fs.existsSync(getConfigFilePath())) {
+async function loadConfig() {
+    const configPath = await getConfigFilePath();
+    if (!fs.existsSync(configPath)) {
         throw new Error('Configuration file not found. Please run the setup script first.');
     }
-    
+
     try {
-        const configData = fs.readFileSync(getConfigFilePath(), 'utf8');
+        const configData = fs.readFileSync(configPath, 'utf8');
         return JSON.parse(configData);
     } catch (error) {
         throw new Error('Failed to parse configuration file: ' + error.message);
@@ -399,8 +412,9 @@ function loadConfig() {
 }
 
 // Helper function to check if configuration exists
-function configExists() {
-    return fs.existsSync(getConfigFilePath());
+async function configExists() {
+    const configPath = await getConfigFilePath();
+    return fs.existsSync(configPath);
 }
 
 // Helper function to validate configuration
@@ -411,7 +425,7 @@ function validateConfig(config) {
         { path: 'jira.apiToken', description: 'Jira API token' },
         { path: 'github.token', description: 'GitHub token' }
     ];
-    
+
     // Check if at least one AI provider is configured
     const hasAIProvider = config.aiProviders && (
         config.aiProviders.claude?.apiKey ||
@@ -422,15 +436,15 @@ function validateConfig(config) {
     );
 
     const missing = [];
-    
+
     for (const field of requiredFields) {
         const keys = field.path.split('.');
         let value = config;
-        
+
         for (const key of keys) {
             value = value?.[key];
         }
-        
+
         if (!value) {
             missing.push(field.description);
         }
@@ -447,8 +461,8 @@ function validateConfig(config) {
 async function updateConfiguration() {
     // Load inquirer first
     await loadInquirer();
-    
-    if (!configExists()) {
+
+    if (!(await configExists())) {
         console.log(chalk.yellow('No existing configuration found. Running initial setup...'));
         return await setupEnvironment();
     }
@@ -456,8 +470,8 @@ async function updateConfiguration() {
     console.log(chalk.blue('🔄 Update Configuration'));
     console.log(chalk.gray('Current configuration found. What would you like to update?\n'));
 
-    const currentConfig = loadConfig();
-    
+    const currentConfig = await loadConfig();
+
     const updateQuestions = [
         {
             type: 'checkbox',
@@ -476,7 +490,7 @@ async function updateConfiguration() {
     ];
 
     const { fieldsToUpdate } = await inquirer.prompt(updateQuestions);
-    
+
     if (fieldsToUpdate.length === 0) {
         console.log(chalk.gray('No fields selected for update.'));
         return;
@@ -484,7 +498,7 @@ async function updateConfiguration() {
 
     // Create update questions for selected fields
     const detailQuestions = [];
-    
+
     if (fieldsToUpdate.includes('jiraBaseUrl')) {
         detailQuestions.push({
             type: 'input',
@@ -546,9 +560,9 @@ async function updateConfiguration() {
                 { name: 'Remove AI provider configuration', value: 'none' }
             ],
             default: currentConfig.aiProviders?.claude ? 'claude' :
-                     currentConfig.aiProviders?.openai ? 'openai' : 
-                     currentConfig.aiProviders?.gemini ? 'gemini' :
-                     currentConfig.aiProviders?.copilot ? 'copilot' : 'claude'
+                currentConfig.aiProviders?.openai ? 'openai' :
+                    currentConfig.aiProviders?.gemini ? 'gemini' :
+                        currentConfig.aiProviders?.copilot ? 'copilot' : 'claude'
         });
 
         // Claude configuration
@@ -565,7 +579,7 @@ async function updateConfiguration() {
             name: 'claudeModel',
             message: 'Update Claude model:',
             when: (answers) => answers.aiProvider === 'claude',
-            default: currentConfig.aiProviders?.claude?.model || DEFAULT_CLAUDE_MODEL
+            default: currentConfig.aiProviders?.claude?.model || DEFAULT_MODELS.CLAUDE
         });
 
         // ChatGPT configuration
@@ -582,7 +596,7 @@ async function updateConfiguration() {
             name: 'openaiModel',
             message: 'Update OpenAI model:',
             when: (answers) => answers.aiProvider === 'openai',
-            default: currentConfig.aiProviders?.openai?.model || DEFAULT_GPT_MODEL
+            default: currentConfig.aiProviders?.openai?.model || DEFAULT_MODELS.OPENAI
         });
 
         // Gemini configuration
@@ -599,7 +613,7 @@ async function updateConfiguration() {
             name: 'geminiModel',
             message: 'Update Gemini model:',
             when: (answers) => answers.aiProvider === 'gemini',
-            default: currentConfig.aiProviders?.gemini?.model || DEFAULT_GEMINI_MODEL
+            default: currentConfig.aiProviders?.gemini?.model || DEFAULT_MODELS.GEMINI
         });
 
         // Copilot configuration
@@ -616,7 +630,7 @@ async function updateConfiguration() {
             name: 'copilotModel',
             message: 'Update Copilot model:',
             when: (answers) => answers.aiProvider === 'copilot',
-            default: currentConfig.aiProviders?.copilot?.model || DEFAULT_GPT_MODEL
+            default: currentConfig.aiProviders?.copilot?.model || DEFAULT_MODELS.COPILOT
         });
     }
 
@@ -642,7 +656,7 @@ async function updateConfiguration() {
 
     // Update the configuration with new values
     const updatedConfig = { ...currentConfig };
-    
+
     if (answers.jiraBaseUrl) updatedConfig.jira.baseUrl = answers.jiraBaseUrl;
     if (answers.jiraUsername) updatedConfig.jira.username = answers.jiraUsername;
     if (answers.jiraApiToken) updatedConfig.jira.apiToken = answers.jiraApiToken;
@@ -667,22 +681,22 @@ async function updateConfiguration() {
         if (answers.aiProvider === 'claude') {
             updatedConfig.aiProviders.claude = {
                 apiKey: answers.claudeApiKey,
-                model: answers.claudeModel || DEFAULT_CLAUDE_MODEL
+                model: answers.claudeModel || DEFAULT_MODELS.CLAUDE
             };
         } else if (answers.aiProvider === 'openai') {
             updatedConfig.aiProviders.openai = {
                 apiKey: answers.openaiApiKey,
-                model: answers.openaiModel || DEFAULT_GPT_MODEL
+                model: answers.openaiModel || DEFAULT_MODELS.OPENAI
             };
         } else if (answers.aiProvider === 'gemini') {
             updatedConfig.aiProviders.gemini = {
                 apiKey: answers.geminiApiKey,
-                model: answers.geminiModel || DEFAULT_GEMINI_MODEL
+                model: answers.geminiModel || DEFAULT_MODELS.GEMINI
             };
         } else if (answers.aiProvider === 'copilot') {
             updatedConfig.aiProviders.copilot = {
                 apiToken: answers.copilotApiToken,
-                model: answers.copilotModel || DEFAULT_GPT_MODEL
+                model: answers.copilotModel || DEFAULT_MODELS.COPILOT
             };
             // Also update legacy copilot config for backward compatibility
             updatedConfig.copilot.apiToken = answers.copilotApiToken;
@@ -697,14 +711,14 @@ async function updateConfiguration() {
     updatedConfig.version = CONFIG_VERSION;
 
     // Save updated configuration
-    fs.writeFileSync(getConfigFilePath(), JSON.stringify(updatedConfig, null, 2));
+    fs.writeFileSync(await getConfigFilePath(), JSON.stringify(updatedConfig, null, 2));
     console.log(chalk.green('\n✅ Global configuration updated successfully!'));
-    console.log(chalk.gray(`Updated configuration saved to: ${getConfigFilePath()}`));
+    console.log(chalk.gray(`Updated configuration saved to: ${await getConfigFilePath()}`));
 }
 
 // Helper function to get specific config values
-function getConfig(section, key) {
-    const config = loadConfig();
+async function getConfig(section, key) {
+    const config = await loadConfig();
     if (section && key) {
         return config[section] ? config[section][key] : undefined;
     } else if (section) {
@@ -714,7 +728,7 @@ function getConfig(section, key) {
 }
 
 // Export functions for use in other modules
-module.exports = {
+export {
     setupEnvironment,
     updateConfiguration,
     loadConfig,
@@ -725,6 +739,9 @@ module.exports = {
 };
 
 // Run setup if called directly
-if (require.main === module) {
-    setupEnvironment();
+if (import.meta.url === `file://${process.argv[1]}`) {
+    setupEnvironment().catch(error => {
+        console.error(chalk.red('\n❌ Unexpected error:'), error.message);
+        process.exit(1);
+    });
 }
