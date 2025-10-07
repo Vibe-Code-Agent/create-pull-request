@@ -39,6 +39,10 @@ jest.mock('inquirer', () => ({
     prompt: jest.fn()
   }
 }));
+jest.mock('open', () => ({
+  __esModule: true,
+  default: jest.fn()
+}));
 jest.mock('../utils/spinner.js', () => ({
   __esModule: true,
   createSpinner: () => ({
@@ -149,7 +153,8 @@ describe('Create PR Command', () => {
       // Mock inquirer to proceed with uncommitted changes
       inquirer.default.prompt
         .mockResolvedValueOnce({ proceed: true }) // Proceed with uncommitted changes
-        .mockResolvedValueOnce({ action: 'create' }); // Create action
+        .mockResolvedValueOnce({ action: 'create' }) // Create action
+        .mockResolvedValueOnce({ openInBrowser: false }); // Don't open in browser
 
       await expect(createPullRequest(mockOptions)).resolves.toBeUndefined();
 
@@ -214,7 +219,9 @@ describe('Create PR Command', () => {
       });
 
       // Mock inquirer for create action
-      inquirer.default.prompt.mockResolvedValueOnce({ action: 'create' });
+      inquirer.default.prompt
+        .mockResolvedValueOnce({ action: 'create' })
+        .mockResolvedValueOnce({ openInBrowser: false });
 
       const optionsWithoutJira = { ...mockOptions };
       delete optionsWithoutJira.jira;
@@ -268,7 +275,8 @@ describe('Create PR Command', () => {
       inquirer.default.prompt.mockClear();
       inquirer.default.prompt
         .mockResolvedValueOnce({ ticket: 'PROJECT-789' }) // User inputs ticket
-        .mockResolvedValueOnce({ action: 'create' }); // Create action
+        .mockResolvedValueOnce({ action: 'create' }) // Create action
+        .mockResolvedValueOnce({ openInBrowser: false }); // Don't open in browser
 
       const optionsWithoutJira = { ...mockOptions };
       delete optionsWithoutJira.jira;
@@ -333,7 +341,8 @@ describe('Create PR Command', () => {
       inquirer.default.prompt.mockClear();
       inquirer.default.prompt
         .mockResolvedValueOnce({ includeConfluence: true }) // Include Confluence
-        .mockResolvedValueOnce({ action: 'create' }); // Create action
+        .mockResolvedValueOnce({ action: 'create' }) // Create action
+        .mockResolvedValueOnce({ openInBrowser: false }); // Don't open in browser
 
       await expect(createPullRequest(mockOptions)).resolves.toBeUndefined();
 
@@ -384,7 +393,8 @@ describe('Create PR Command', () => {
       // Mock inquirer for Confluence exclusion and create action
       inquirer.default.prompt
         .mockResolvedValueOnce({ includeConfluence: false }) // Don't include Confluence
-        .mockResolvedValueOnce({ action: 'create' }); // Create action
+        .mockResolvedValueOnce({ action: 'create' }) // Create action
+        .mockResolvedValueOnce({ openInBrowser: false }); // Don't open in browser
 
       await expect(createPullRequest(mockOptions)).resolves.toBeUndefined();
 
@@ -461,7 +471,8 @@ describe('Create PR Command', () => {
       inquirer.default.prompt
         .mockResolvedValueOnce({ includeConfluence: false }) // Confluence prompt
         .mockResolvedValueOnce({ template: { name: 'Template 2', content: 'Content 2' } }) // Select template
-        .mockResolvedValueOnce({ action: 'create' }); // Create action
+        .mockResolvedValueOnce({ action: 'create' }) // Create action
+        .mockResolvedValueOnce({ openInBrowser: false }); // Don't open in browser
 
       await expect(createPullRequest(mockOptions)).resolves.toBeUndefined();
 
@@ -516,7 +527,8 @@ describe('Create PR Command', () => {
           editedTitle: 'Edited Title',
           editedSummary: 'Edited Summary',
           editedBody: 'Edited Body'
-        }); // Edited content
+        }) // Edited content
+        .mockResolvedValueOnce({ openInBrowser: false }); // Don't open in browser
 
       await expect(createPullRequest(mockOptions)).resolves.toBeUndefined();
 
@@ -590,7 +602,8 @@ describe('Create PR Command', () => {
       inquirer.default.prompt
         .mockResolvedValueOnce({ includeConfluence: false }) // Confluence prompt
         .mockResolvedValueOnce({ action: 'regenerate' }) // First: Regenerate
-        .mockResolvedValueOnce({ action: 'create' }); // Second: Create with regenerated content
+        .mockResolvedValueOnce({ action: 'create' }) // Second: Create with regenerated content
+        .mockResolvedValueOnce({ openInBrowser: false }); // Don't open in browser
 
       await expect(createPullRequest(mockOptions)).resolves.toBeUndefined();
 
@@ -674,7 +687,8 @@ describe('Create PR Command', () => {
         .mockResolvedValueOnce({ includeConfluence: false }) // Confluence prompt
         .mockResolvedValueOnce({ action: 'regenerate' }) // First: Regenerate
         .mockResolvedValueOnce({ action: 'regenerate' }) // Second: Regenerate again
-        .mockResolvedValueOnce({ action: 'create' }); // Third: Create with final content
+        .mockResolvedValueOnce({ action: 'create' }) // Third: Create with final content
+        .mockResolvedValueOnce({ openInBrowser: false }); // Don't open in browser
 
       await expect(createPullRequest(mockOptions)).resolves.toBeUndefined();
 
@@ -778,7 +792,8 @@ describe('Create PR Command', () => {
       // Mock inquirer for create action
       inquirer.default.prompt
         .mockResolvedValueOnce({ includeConfluence: false }) // Confluence prompt
-        .mockResolvedValueOnce({ action: 'create' });
+        .mockResolvedValueOnce({ action: 'create' })
+        .mockResolvedValueOnce({ openInBrowser: false }); // Don't open in browser
 
       const draftOptions = { ...mockOptions, draft: true };
 
@@ -834,7 +849,8 @@ describe('Create PR Command', () => {
       // Mock inquirer for create action
       inquirer.default.prompt
         .mockResolvedValueOnce({ includeConfluence: false }) // Confluence prompt
-        .mockResolvedValueOnce({ action: 'create' });
+        .mockResolvedValueOnce({ action: 'create' })
+        .mockResolvedValueOnce({ openInBrowser: false }); // Don't open in browser
 
       await expect(createPullRequest(mockOptions)).resolves.toBeUndefined();
 
@@ -884,7 +900,8 @@ describe('Create PR Command', () => {
 
       // Mock inquirer for create action
       inquirer.default.prompt
-        .mockResolvedValueOnce({ action: 'create' });
+        .mockResolvedValueOnce({ action: 'create' })
+        .mockResolvedValueOnce({ openInBrowser: false });
 
       await expect(createPullRequest(mockOptions)).resolves.toBeUndefined();
 
@@ -1039,7 +1056,8 @@ describe('Create PR Command', () => {
       inquirer.default.prompt.mockClear();
       inquirer.default.prompt
         .mockResolvedValueOnce({ retry: true }) // First prompt: retry choice
-        .mockResolvedValueOnce({ action: 'create' }); // Second prompt: create action
+        .mockResolvedValueOnce({ action: 'create' }) // Second prompt: create action
+        .mockResolvedValueOnce({ openInBrowser: false }); // Don't open in browser
 
       await expect(createPullRequest(mockOptions)).resolves.toBeUndefined();
 
@@ -1137,7 +1155,8 @@ describe('Create PR Command', () => {
         .mockResolvedValueOnce({ retry: true }) // Initial retry choice after first failure
         .mockResolvedValueOnce({ action: 'regenerate' }) // User wants to regenerate after first success
         .mockResolvedValueOnce({ retry: true }) // Retry after third failure
-        .mockResolvedValueOnce({ action: 'create' }); // Create action after final success
+        .mockResolvedValueOnce({ action: 'create' }) // Create action after final success
+        .mockResolvedValueOnce({ openInBrowser: false }); // Don't open in browser
 
       await expect(createPullRequest(mockOptions)).resolves.toBeUndefined();
 
@@ -1285,7 +1304,8 @@ describe('Create PR Command', () => {
       inquirer.default.prompt.mockClear();
       inquirer.default.prompt
         .mockResolvedValueOnce({ ticket: 'PROJECT-123' }) // Valid input (validation happens internally)
-        .mockResolvedValueOnce({ action: 'create' }); // User confirms
+        .mockResolvedValueOnce({ action: 'create' }) // User confirms
+        .mockResolvedValueOnce({ openInBrowser: false }); // Don't open in browser
 
       const optionsWithoutJira = { ...mockOptions };
       delete optionsWithoutJira.jira;
@@ -1339,7 +1359,8 @@ describe('Create PR Command', () => {
       inquirer.default.prompt.mockClear();
       inquirer.default.prompt
         .mockResolvedValueOnce({ ticket: 'PROJECT-123' }) // Valid input (validation happens internally)
-        .mockResolvedValueOnce({ action: 'create' }); // User confirms
+        .mockResolvedValueOnce({ action: 'create' }) // User confirms
+        .mockResolvedValueOnce({ openInBrowser: false }); // Don't open in browser
 
       const optionsWithoutJira = { ...mockOptions };
       delete optionsWithoutJira.jira;
