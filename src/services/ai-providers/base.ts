@@ -1,9 +1,9 @@
 import axios, { AxiosInstance } from 'axios';
 import { LIMITS, HEADERS, HTTP_STATUS } from '../../constants/index.js';
-import { AIConfig, AIResponse, AIProvider } from '../../interface/ai.js';
+import { AIResponse, AIProvider } from '../../interface/ai.js';
 
 // Re-export interfaces for backward compatibility
-export type { AIConfig, AIResponse, AIProvider } from '../../interface/ai.js';
+export type { AIResponse, AIProvider } from '../../interface/ai.js';
 
 export abstract class BaseAIProvider {
   protected readonly client: AxiosInstance;
