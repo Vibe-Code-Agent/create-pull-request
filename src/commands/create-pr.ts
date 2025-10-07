@@ -326,7 +326,7 @@ export async function createPullRequest(options: CreatePROptions): Promise<void>
 
     // Generate PR description using AI with retry capability
     spinner.start('Generating pull request description with AI...');
-    const generatedContent = await generatePRDescriptionWithRetry({
+    let generatedContent = await generatePRDescriptionWithRetry({
       aiDescriptionService,
       spinner,
       jiraTicket: ticketInfo,
@@ -341,36 +341,74 @@ export async function createPullRequest(options: CreatePROptions): Promise<void>
       }
     });
 
-    // Show generated content for review
-    console.log(chalk.blue('\n📝 Generated Pull Request:'));
+    let action = '';
+    let regenerationCount = 0;
+    
+    // Loop to allow regeneration
+    while (action !== 'create' && action !== 'edit' && action !== 'cancel') {
+      // Show generated content for review
+      if (regenerationCount > 0) {
+        console.log(chalk.blue(`\n🔄 Regenerated Pull Request (Attempt ${regenerationCount + 1}):`));
+      } else {
+        console.log(chalk.blue('\n📝 Generated Pull Request:'));
+      }
 
-    // Display summary if available
-    if (generatedContent.summary) {
-      console.log(chalk.bold('Summary:'));
-      console.log(chalk.cyan(generatedContent.summary));
-      console.log();
+      // Display summary if available
+      if (generatedContent.summary) {
+        console.log(chalk.bold('Summary:'));
+        console.log(chalk.cyan(generatedContent.summary));
+        console.log();
+      }
+
+      console.log(chalk.bold('Title:'));
+      console.log(generatedContent.title);
+      console.log(chalk.bold('\nDescription:'));
+      console.log(generatedContent.body);
+
+      // Ask for user confirmation
+      const response = await inquirer.prompt([{
+        type: 'list',
+        name: 'action',
+        message: 'What would you like to do?',
+        choices: [
+          { name: '✅ Create the pull request', value: 'create' },
+          { name: '🔄 Regenerate with AI', value: 'regenerate' },
+          { name: '✏️  Edit the description', value: 'edit' },
+          { name: '❌ Cancel', value: 'cancel' }
+        ]
+      }]);
+
+      action = response.action;
+
+      if (action === 'cancel') {
+        console.log(chalk.yellow('❌ Pull request creation cancelled.'));
+        return;
+      }
+
+      if (action === 'regenerate') {
+        regenerationCount++;
+        spinner.start(`Regenerating pull request description with AI (attempt ${regenerationCount + 1})...`);
+        generatedContent = await generatePRDescriptionWithRetry({
+          aiDescriptionService,
+          spinner,
+          jiraTicket: ticketInfo,
+          gitChanges,
+          template: selectedTemplate,
+          diffContent,
+          prTitle: options.title,
+          repoInfo: {
+            owner: repo.owner,
+            repo: repo.repo,
+            currentBranch: currentBranch
+          }
+        });
+        // Continue the loop to show the new content
+      }
     }
 
-    console.log(chalk.bold('Title:'));
-    console.log(generatedContent.title);
-    console.log(chalk.bold('\nDescription:'));
-    console.log(generatedContent.body);
-
-    // Ask for user confirmation
-    const { action } = await inquirer.prompt([{
-      type: 'list',
-      name: 'action',
-      message: 'What would you like to do?',
-      choices: [
-        { name: '✅ Create the pull request', value: 'create' },
-        { name: '✏️  Edit the description', value: 'edit' },
-        { name: '❌ Cancel', value: 'cancel' }
-      ]
-    }]);
-
-    if (action === 'cancel') {
-      console.log(chalk.yellow('❌ Pull request creation cancelled.'));
-      return;
+    // Ensure generatedContent is defined before accessing its properties
+    if (!generatedContent) {
+      throw new Error('Failed to generate PR content. Please try again.');
     }
 
     let finalTitle = generatedContent.title;
@@ -382,6 +420,9 @@ export async function createPullRequest(options: CreatePROptions): Promise<void>
     console.log(chalk.gray(`Title: "${generatedContent.title}"`));
     console.log(chalk.gray(`Summary: "${generatedContent.summary}"`));
     console.log(chalk.gray(`Body length: ${generatedContent.body?.length || 0} characters`));
+    if (regenerationCount > 0) {
+      console.log(chalk.gray(`Regenerations: ${regenerationCount}`));
+    }
 
     if (action === 'edit') {
       const editPrompts: any[] = [
