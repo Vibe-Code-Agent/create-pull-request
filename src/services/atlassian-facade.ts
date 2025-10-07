@@ -1,7 +1,7 @@
 import { JiraService as AtlassianJiraService } from './atlassian/jira.js';
 import { ConfluenceService } from './atlassian/confluence.js';
 
-import { ConfluencePage, JiraTicket } from '../interface/atlassian.js';
+import { ConfluencePage, JiraTicket } from '../interface/jira-confluence.js';
 
 export class JiraService {
   private readonly jiraService: AtlassianJiraService;

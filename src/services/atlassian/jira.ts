@@ -1,7 +1,7 @@
 import { BaseAtlassianService } from './base.js';
 import { API_URLS, JIRA_ENDPOINTS } from '../../constants/index.js';
 
-import { JiraTicket } from '../../interface/atlassian.js';
+import { JiraTicket } from '../../interface/jira-confluence.js';
 
 export class JiraService extends BaseAtlassianService {
     constructor() {

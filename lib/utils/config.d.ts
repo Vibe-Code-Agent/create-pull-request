@@ -1,5 +1,5 @@
-import { EnvironmentConfig } from '../interface/config.js';
-export type { EnvironmentConfig } from '../interface/config.js';
+import { EnvironmentConfig } from '../interface/configuration.js';
+export type { EnvironmentConfig } from '../interface/configuration.js';
 /**
  * Get the configuration file path
  * @returns The full path to the configuration file

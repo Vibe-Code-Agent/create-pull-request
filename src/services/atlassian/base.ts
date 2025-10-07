@@ -2,7 +2,7 @@ import axios, { AxiosInstance } from 'axios';
 import { getConfig } from '../../utils/config.js';
 import { HEADERS, HTTP_STATUS, LIMITS } from '../../constants/index.js';
 
-import { AtlassianConfig } from '../../interface/atlassian.js';
+import { AtlassianConfig } from '../../interface/jira-confluence.js';
 
 export abstract class BaseAtlassianService {
     protected readonly client: AxiosInstance;

@@ -1,4 +1,4 @@
-import { ConfluencePage, JiraTicket } from '../interface/atlassian.js';
+import { ConfluencePage, JiraTicket } from '../interface/jira-confluence.js';
 export declare class JiraService {
     private readonly jiraService;
     private readonly confluenceService;

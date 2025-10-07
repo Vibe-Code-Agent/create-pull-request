@@ -1,7 +1,7 @@
 import { BaseAtlassianService } from './base.js';
 import { CONFLUENCE_ENDPOINTS, LIMITS } from '../../constants/index.js';
 
-import { ConfluencePage } from '../../interface/atlassian.js';
+import { ConfluencePage } from '../../interface/jira-confluence.js';
 
 export class ConfluenceService extends BaseAtlassianService {
     constructor() {

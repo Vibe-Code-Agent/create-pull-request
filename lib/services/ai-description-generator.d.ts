@@ -1,5 +1,5 @@
-import { GenerateDescriptionOptions, GeneratedPRContent } from '../interface/ai.js';
-export type { GenerateDescriptionOptions, GeneratedPRContent } from '../interface/ai.js';
+import { GenerateDescriptionOptions, GeneratedPRContent } from '../interface/ai-provider.js';
+export type { GenerateDescriptionOptions, GeneratedPRContent } from '../interface/ai-provider.js';
 export declare class AIDescriptionGeneratorService {
     private readonly providerManager;
     private readonly promptBuilder;

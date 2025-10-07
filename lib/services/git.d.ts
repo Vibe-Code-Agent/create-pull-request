@@ -1,5 +1,5 @@
-import { GitChanges } from '../interface/git.js';
-export type { FileChange, GitChanges } from '../interface/git.js';
+import { GitChanges } from '../interface/git-operations.js';
+export type { FileChange, GitChanges } from '../interface/git-operations.js';
 export declare class GitService {
     private readonly git;
     constructor();

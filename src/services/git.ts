@@ -1,9 +1,9 @@
 import { simpleGit, SimpleGit } from 'simple-git';
 import { CONFIG, LIMITS } from '../constants/index.js';
-import { FileChange, GitChanges } from '../interface/git.js';
+import { FileChange, GitChanges } from '../interface/git-operations.js';
 
 // Re-export interfaces for backward compatibility
-export type { FileChange, GitChanges } from '../interface/git.js';
+export type { FileChange, GitChanges } from '../interface/git-operations.js';
 
 export class GitService {
   private readonly git: SimpleGit;

@@ -1,6 +1,6 @@
 import { AIProvider } from './base.js';
 
-import { GeneratedPRContent } from '../../interface/ai.js';
+import { GeneratedPRContent } from '../../interface/ai-provider.js';
 
 export class ResponseParser {
   parseAIResponse(response: any, _provider?: AIProvider): GeneratedPRContent {

@@ -19,7 +19,7 @@ export declare function createJiraError(message: string, statusCode?: number): A
 export declare function createGitHubError(message: string, statusCode?: number): AppError;
 export declare function createGitError(message: string): AppError;
 export declare function createValidationError(message: string): AppError;
-import { ErrorDetails, ExtendedError } from '../interface/utils.js';
+import { ErrorDetails, ExtendedError } from '../interface/common.js';
 export declare function createError(message: string, code?: string, details?: any): ExtendedError;
 export declare function isAxiosError(error: any): boolean;
 export declare function extractErrorDetails(error: any): ErrorDetails;
