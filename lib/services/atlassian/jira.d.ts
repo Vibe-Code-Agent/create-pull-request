@@ -1,5 +1,5 @@
 import { BaseAtlassianService } from './base.js';
-import { JiraTicket } from '../../interface/atlassian.js';
+import { JiraTicket } from '../../interface/jira-confluence.js';
 export declare class JiraService extends BaseAtlassianService {
     constructor();
     getTicket(ticketKey: string): Promise<JiraTicket>;

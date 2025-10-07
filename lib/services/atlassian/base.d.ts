@@ -1,5 +1,5 @@
 import { AxiosInstance } from 'axios';
-import { AtlassianConfig } from '../../interface/atlassian.js';
+import { AtlassianConfig } from '../../interface/jira-confluence.js';
 export declare abstract class BaseAtlassianService {
     protected readonly client: AxiosInstance;
     protected readonly config: AtlassianConfig;

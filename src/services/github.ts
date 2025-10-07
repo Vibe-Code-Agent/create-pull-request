@@ -4,10 +4,10 @@ import { getConfig } from '../utils/config.js';
 import { FILE_PATHS, REGEX_PATTERNS, HEADERS, HTTP_STATUS, LIMITS, CONFIG } from '../constants/index.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { GitHubRepo, PullRequest, PullRequestTemplate } from '../interface/github.js';
+import { GitHubRepo, PullRequest, PullRequestTemplate } from '../interface/github-api.js';
 
 // Re-export interfaces for backward compatibility
-export type { GitHubRepo, PullRequest, PullRequestTemplate } from '../interface/github.js';
+export type { GitHubRepo, PullRequest, PullRequestTemplate } from '../interface/github-api.js';
 
 export class GitHubService {
   private readonly octokit: Octokit;

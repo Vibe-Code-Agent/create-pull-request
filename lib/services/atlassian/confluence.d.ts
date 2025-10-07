@@ -1,5 +1,5 @@
 import { BaseAtlassianService } from './base.js';
-import { ConfluencePage } from '../../interface/atlassian.js';
+import { ConfluencePage } from '../../interface/jira-confluence.js';
 export declare class ConfluenceService extends BaseAtlassianService {
     constructor();
     /**

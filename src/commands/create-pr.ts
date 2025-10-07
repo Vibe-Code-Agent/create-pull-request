@@ -8,10 +8,10 @@ import { GitService } from '../services/git.js';
 import { AIDescriptionGeneratorService } from '../services/ai-description-generator.js';
 import { validateJiraTicket, validateGitRepository, extractJiraTicketFromBranch } from '../utils/validation.js';
 import { CONFIG } from '../constants/index.js';
-import { CreatePROptions, GeneratePRDescriptionParams, GenerateOptions } from '../interface/commands.js';
+import { CreatePROptions, GeneratePRDescriptionParams, GenerateOptions } from '../interface/pull-request.js';
 
 // Re-export interfaces for backward compatibility
-export type { CreatePROptions, GeneratePRDescriptionParams, GenerateOptions } from '../interface/commands.js';
+export type { CreatePROptions, GeneratePRDescriptionParams, GenerateOptions } from '../interface/pull-request.js';
 
 /**
  * Format error message from error object

@@ -6,5 +6,5 @@ export { CopilotProvider } from './copilot.js';
 export { AIProviderManager } from './manager.js';
 export { PromptBuilder, PromptBuilderOptions } from './prompt-builder.js';
 export { ResponseParser } from './response-parser.js';
-export { GeneratedPRContent, AIConfig } from '../../interface/ai.js';
+export { GeneratedPRContent, AIConfig } from '../../interface/ai-provider.js';
 //# sourceMappingURL=index.d.ts.map
