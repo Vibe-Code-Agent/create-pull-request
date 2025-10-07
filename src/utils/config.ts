@@ -2,11 +2,10 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { CONFIG } from '../constants/index.js';
-
 import { EnvironmentConfig } from '../interface/config.js';
 
-// Re-export for backward compatibility
-export type { EnvironmentConfig };
+// Re-export interfaces for backward compatibility
+export type { EnvironmentConfig } from '../interface/config.js';
 
 /**
  * Get the configuration file path

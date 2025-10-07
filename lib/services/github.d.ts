@@ -1,5 +1,5 @@
 import { GitHubRepo, PullRequest, PullRequestTemplate } from '../interface/github.js';
-export type { GitHubRepo, PullRequest, PullRequestTemplate };
+export type { GitHubRepo, PullRequest, PullRequestTemplate } from '../interface/github.js';
 export declare class GitHubService {
     private readonly octokit;
     private readonly git;

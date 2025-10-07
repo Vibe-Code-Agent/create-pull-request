@@ -1,6 +1,6 @@
 import { AxiosInstance } from 'axios';
-import { AIConfig, AIResponse, AIProvider } from '../../interface/ai.js';
-export type { AIConfig, AIResponse, AIProvider };
+import { AIResponse, AIProvider } from '../../interface/ai.js';
+export type { AIConfig, AIResponse, AIProvider } from '../../interface/ai.js';
 export declare abstract class BaseAIProvider {
     protected readonly client: AxiosInstance;
     protected readonly provider: AIProvider;

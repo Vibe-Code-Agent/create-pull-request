@@ -1,10 +1,10 @@
-import { GenerateDescriptionOptions, GeneratedPRContent } from '../interface/ai.js';
 import { AIProviderManager } from './ai-providers/manager.js';
 import { PromptBuilder } from './ai-providers/prompt-builder.js';
 import { ResponseParser } from './ai-providers/response-parser.js';
+import { GenerateDescriptionOptions, GeneratedPRContent } from '../interface/ai.js';
 
-// Re-export for backward compatibility
-export type { GenerateDescriptionOptions, GeneratedPRContent };
+// Re-export interfaces for backward compatibility
+export type { GenerateDescriptionOptions, GeneratedPRContent } from '../interface/ai.js';
 
 export class AIDescriptionGeneratorService {
   private readonly providerManager: AIProviderManager;

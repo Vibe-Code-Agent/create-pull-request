@@ -1,10 +1,10 @@
-import { PromptBuilderOptions } from '../../interface/ai.js';
 import { JiraTicket } from '../../interface/atlassian.js';
 import { GitChanges, FileChange } from '../../interface/git.js';
 import { PullRequestTemplate } from '../../interface/github.js';
+import { PromptBuilderOptions } from '../../interface/ai.js';
 
 // Re-export for backward compatibility
-export type { PromptBuilderOptions };
+export type { PromptBuilderOptions } from '../../interface/ai.js';
 
 export class PromptBuilder {
   buildPrompt(options: PromptBuilderOptions): string {

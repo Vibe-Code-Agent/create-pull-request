@@ -1,5 +1,5 @@
 import { PromptBuilderOptions } from '../../interface/ai.js';
-export type { PromptBuilderOptions };
+export type { PromptBuilderOptions } from '../../interface/ai.js';
 export declare class PromptBuilder {
     buildPrompt(options: PromptBuilderOptions): string;
     private buildPromptHeader;
