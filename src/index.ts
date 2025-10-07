@@ -7,11 +7,63 @@ import { createPullRequest } from './commands/create-pr.js';
 import { validateEnvironment } from './utils/validation.js';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
+import { fileURLToPath } from 'url';
 import { CONFIG } from './constants/index.js';
+
+// Get __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 config();
 
 const program = new Command();
+
+// Helper function to handle errors consistently
+function handleError(error: unknown, context: string): never {
+  console.error(chalk.red('❌ Error:'), error instanceof Error ? error.message : 'Unknown error');
+  if (context) {
+    console.error(chalk.gray(`Context: ${context}`));
+  }
+  process.exit(1);
+}
+
+// Helper function to spawn setup scripts
+async function runSetupScript(scriptName: string, successMessage: string, errorContext: string, customSuccessMessage?: string): Promise<void> {
+  try {
+    // Handle both source and compiled paths
+    let scriptsPath;
+    if (__dirname.includes('src')) {
+      // Running from source
+      scriptsPath = path.join(__dirname, '..', 'scripts', scriptName);
+    } else {
+      // Running from compiled lib - go up one level to project root, then into scripts
+      scriptsPath = path.join(__dirname, '..', 'scripts', scriptName);
+    }
+
+    const setupProcess = spawn('node', [scriptsPath], {
+      stdio: 'inherit',
+      shell: true
+    });
+
+    setupProcess.on('close', (code) => {
+      if (code === 0) {
+        console.log(chalk.green(`\n✅ ${successMessage}`));
+        const finalMessage = customSuccessMessage || 'You can now use "create-pr create" to generate pull requests.';
+        console.log(chalk.gray(finalMessage));
+      } else {
+        console.error(chalk.red(`\n❌ ${errorContext} failed with exit code:`), code);
+        process.exit(1);
+      }
+    });
+
+    setupProcess.on('error', (error) => {
+      console.error(chalk.red(`\n❌ Failed to run ${errorContext}:`), error.message);
+      process.exit(1);
+    });
+  } catch (error) {
+    handleError(error, errorContext);
+  }
+}
 
 program
   .name(CONFIG.CLI_NAME)
@@ -29,14 +81,13 @@ program
   .action(async (options) => {
     try {
       console.log(chalk.blue('🚀 Starting pull request creation process...\n'));
-      
+
       // Validate environment variables
       validateEnvironment();
-      
+
       await createPullRequest(options);
     } catch (error) {
-      console.error(chalk.red('❌ Error:'), error instanceof Error ? error.message : 'Unknown error');
-      process.exit(1);
+      handleError(error, 'Pull request creation');
     }
   });
 
@@ -47,7 +98,7 @@ program
     console.log(chalk.blue('📋 Configuration Setup:\n'));
     console.log('🎯 ' + chalk.bold('Recommended: Use the interactive setup wizard'));
     console.log(chalk.green('   Run: ') + chalk.yellow('create-pr setup') + chalk.gray(' (sets up global config automatically)\n'));
-    
+
     console.log('⚙️  ' + chalk.bold('Alternative: Manual configuration'));
     console.log('1. Copy .env.example to .env');
     console.log('2. Fill in your credentials:\n');
@@ -60,7 +111,7 @@ program
     console.log(chalk.yellow('   GEMINI_API_KEY') + '=your-gemini-api-key ' + chalk.gray('(fallback)'));
     console.log(chalk.yellow('   ANTHROPIC_API_KEY') + '=your-anthropic-api-key ' + chalk.gray('(recommended)'));
     console.log(chalk.yellow('   COPILOT_API_TOKEN') + '=your-copilot-api-token ' + chalk.gray('(fallback)\n'));
-    
+
     console.log('📝 ' + chalk.bold('Important notes:'));
     console.log('• Make sure your GitHub token has repo permissions');
     console.log('• For Jira, generate an API token from your Atlassian account settings');
@@ -74,68 +125,21 @@ program
   .command('setup')
   .description('Run interactive environment setup wizard')
   .action(async () => {
-    try {
-      console.log(chalk.blue('🛠️  Starting environment setup wizard...\n'));
-      
-      const setupScript = path.join(__dirname, '..', 'scripts', 'setup-env.js');
-      
-      const setupProcess = spawn('node', [setupScript], {
-        stdio: 'inherit',
-        shell: true
-      });
-      
-      setupProcess.on('close', (code) => {
-        if (code === 0) {
-          console.log(chalk.green('\n✅ Setup completed successfully!'));
-          console.log(chalk.gray('You can now use "create-pr create" to generate pull requests.'));
-        } else {
-          console.error(chalk.red('\n❌ Setup failed with exit code:'), code);
-          process.exit(1);
-        }
-      });
-      
-      setupProcess.on('error', (error) => {
-        console.error(chalk.red('\n❌ Failed to run setup:'), error.message);
-        process.exit(1);
-      });
-    } catch (error) {
-      console.error(chalk.red('❌ Error:'), error instanceof Error ? error.message : 'Unknown error');
-      process.exit(1);
-    }
+    console.log(chalk.blue('🛠️  Starting environment setup wizard...\n'));
+    await runSetupScript('setup-env.js', 'Setup completed successfully!', 'Setup');
   });
 
 program
   .command('git-extension')
   .description('Set up git extension to enable "git create-pr" command')
   .action(async () => {
-    try {
-      console.log(chalk.blue('🔧 Setting up git extension...\n'));
-      
-      const setupScript = path.join(__dirname, '..', 'scripts', 'setup-git-extension.js');
-      
-      const setupProcess = spawn('node', [setupScript], {
-        stdio: 'inherit',
-        shell: true
-      });
-      
-      setupProcess.on('close', (code) => {
-        if (code === 0) {
-          console.log(chalk.green('\n✅ Git extension setup completed!'));
-          console.log(chalk.gray('You can now use "git create-pr" command after updating your PATH.'));
-        } else {
-          console.error(chalk.red('\n❌ Git extension setup failed with exit code:'), code);
-          process.exit(1);
-        }
-      });
-      
-      setupProcess.on('error', (error) => {
-        console.error(chalk.red('\n❌ Failed to run git extension setup:'), error.message);
-        process.exit(1);
-      });
-    } catch (error) {
-      console.error(chalk.red('❌ Error:'), error instanceof Error ? error.message : 'Unknown error');
-      process.exit(1);
-    }
+    console.log(chalk.blue('🔧 Setting up git extension...\n'));
+    await runSetupScript(
+      'setup-git-extension.js',
+      'Git extension setup completed!',
+      'Git extension setup',
+      'You can now use "git create-pr" command after updating your PATH.'
+    );
   });
 
 if (process.argv.length === 2) {
