@@ -7,7 +7,7 @@ import { createPullRequest } from './commands/create-pr.js';
 import { validateEnvironment } from './utils/validation.js';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath } from 'node:url';
 import { CONFIG } from './constants/index.js';
 
 // Get __dirname equivalent for ES modules
@@ -31,14 +31,7 @@ function handleError(error: unknown, context: string): never {
 async function runSetupScript(scriptName: string, successMessage: string, errorContext: string, customSuccessMessage?: string): Promise<void> {
   try {
     // Handle both source and compiled paths
-    let scriptsPath;
-    if (__dirname.includes('src')) {
-      // Running from source
-      scriptsPath = path.join(__dirname, '..', 'scripts', scriptName);
-    } else {
-      // Running from compiled lib - go up one level to project root, then into scripts
-      scriptsPath = path.join(__dirname, '..', 'scripts', scriptName);
-    }
+    const scriptsPath = path.join(__dirname, '..', 'scripts', scriptName);
 
     const setupProcess = spawn('node', [scriptsPath], {
       stdio: 'inherit',
