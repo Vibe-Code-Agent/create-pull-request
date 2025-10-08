@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { CopilotProvider } from '../../services/ai-providers/copilot.js';
 import { getConfig } from '../../utils/config.js';
-import { AI_PROVIDERS } from '../../constants/index.js';
+import { AI_PROVIDERS, LIMITS } from '../../constants/index.js';
 
 // Mock dependencies
 jest.mock('axios');
@@ -99,7 +99,7 @@ describe('CopilotProvider', () => {
             content: 'test prompt'
           }
         ],
-        max_tokens: 4000,
+        max_tokens: LIMITS.MAX_API_TOKENS,
         temperature: 0.7
       });
     });
@@ -184,7 +184,7 @@ describe('CopilotProvider', () => {
               content: 'test prompt'
             }
           ],
-          max_tokens: 4000,
+          max_tokens: LIMITS.MAX_API_TOKENS,
           temperature: 0.7
         }
       );

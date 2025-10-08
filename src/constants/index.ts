@@ -133,6 +133,31 @@ export const AI_PROVIDER_NAMES = {
   COPILOT: 'GitHub Copilot'
 } as const;
 
+// Configuration Section Keys
+export const CONFIG_SECTIONS = {
+  JIRA: 'jira',
+  GITHUB: 'github',
+  COPILOT: 'copilot',
+  AI_PROVIDERS: 'aiProviders'
+} as const;
+
+// Environment Variable Keys
+export const ENV_KEYS = {
+  // Jira Configuration
+  JIRA_BASE_URL: 'JIRA_BASE_URL',
+  JIRA_USERNAME: 'JIRA_USERNAME',
+  JIRA_API_TOKEN: 'JIRA_API_TOKEN',
+  JIRA_PROJECT_KEY: 'JIRA_PROJECT_KEY',
+  // GitHub Configuration
+  GITHUB_TOKEN: 'GITHUB_TOKEN',
+  DEFAULT_BRANCH: 'DEFAULT_BRANCH',
+  // AI Provider API Keys
+  ANTHROPIC_API_KEY: 'ANTHROPIC_API_KEY',
+  OPENAI_API_KEY: 'OPENAI_API_KEY',
+  GEMINI_API_KEY: 'GEMINI_API_KEY',
+  COPILOT_API_TOKEN: 'COPILOT_API_TOKEN'
+} as const;
+
 // System Constants
 export const SYSTEM = {
   EXECUTABLE_PERMISSIONS: '755',

@@ -78,6 +78,24 @@ export declare const AI_PROVIDER_NAMES: {
     readonly GEMINI: "Gemini (Google)";
     readonly COPILOT: "GitHub Copilot";
 };
+export declare const CONFIG_SECTIONS: {
+    readonly JIRA: "jira";
+    readonly GITHUB: "github";
+    readonly COPILOT: "copilot";
+    readonly AI_PROVIDERS: "aiProviders";
+};
+export declare const ENV_KEYS: {
+    readonly JIRA_BASE_URL: "JIRA_BASE_URL";
+    readonly JIRA_USERNAME: "JIRA_USERNAME";
+    readonly JIRA_API_TOKEN: "JIRA_API_TOKEN";
+    readonly JIRA_PROJECT_KEY: "JIRA_PROJECT_KEY";
+    readonly GITHUB_TOKEN: "GITHUB_TOKEN";
+    readonly DEFAULT_BRANCH: "DEFAULT_BRANCH";
+    readonly ANTHROPIC_API_KEY: "ANTHROPIC_API_KEY";
+    readonly OPENAI_API_KEY: "OPENAI_API_KEY";
+    readonly GEMINI_API_KEY: "GEMINI_API_KEY";
+    readonly COPILOT_API_TOKEN: "COPILOT_API_TOKEN";
+};
 export declare const SYSTEM: {
     readonly EXECUTABLE_PERMISSIONS: "755";
     readonly MIN_NODE_VERSION: ">=18.0.0";

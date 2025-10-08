@@ -8,7 +8,7 @@ import {
   extractJiraTicketFromBranch,
   validateGitRepository
 } from '../utils/validation';
-import { REGEX_PATTERNS } from '../constants';
+import { REGEX_PATTERNS, ENV_KEYS, CONFIG_SECTIONS } from '../constants';
 import { validateConfig, getConfigValue as getConfigValueFromConfig } from '../utils/config';
 
 // Mock the config module
@@ -57,64 +57,64 @@ describe('Validation Utils', () => {
     it('should map JIRA_BASE_URL to jira.baseUrl', () => {
       mockedGetConfigValueFromConfig.mockReturnValue('https://company.atlassian.net');
 
-      const result = getConfigValue('JIRA_BASE_URL');
+      const result = getConfigValue(ENV_KEYS.JIRA_BASE_URL);
 
       expect(result).toBe('https://company.atlassian.net');
-      expect(mockedGetConfigValueFromConfig).toHaveBeenCalledWith('jira', 'baseUrl');
+      expect(mockedGetConfigValueFromConfig).toHaveBeenCalledWith(CONFIG_SECTIONS.JIRA, 'baseUrl');
     });
 
     it('should map JIRA_USERNAME to jira.username', () => {
       mockedGetConfigValueFromConfig.mockReturnValue('user@company.com');
 
-      const result = getConfigValue('JIRA_USERNAME');
+      const result = getConfigValue(ENV_KEYS.JIRA_USERNAME);
 
       expect(result).toBe('user@company.com');
-      expect(mockedGetConfigValueFromConfig).toHaveBeenCalledWith('jira', 'username');
+      expect(mockedGetConfigValueFromConfig).toHaveBeenCalledWith(CONFIG_SECTIONS.JIRA, 'username');
     });
 
     it('should map JIRA_API_TOKEN to jira.apiToken', () => {
       mockedGetConfigValueFromConfig.mockReturnValue('api-token-123');
 
-      const result = getConfigValue('JIRA_API_TOKEN');
+      const result = getConfigValue(ENV_KEYS.JIRA_API_TOKEN);
 
       expect(result).toBe('api-token-123');
-      expect(mockedGetConfigValueFromConfig).toHaveBeenCalledWith('jira', 'apiToken');
+      expect(mockedGetConfigValueFromConfig).toHaveBeenCalledWith(CONFIG_SECTIONS.JIRA, 'apiToken');
     });
 
     it('should map GITHUB_TOKEN to github.token', () => {
       mockedGetConfigValueFromConfig.mockReturnValue('github-token-123');
 
-      const result = getConfigValue('GITHUB_TOKEN');
+      const result = getConfigValue(ENV_KEYS.GITHUB_TOKEN);
 
       expect(result).toBe('github-token-123');
-      expect(mockedGetConfigValueFromConfig).toHaveBeenCalledWith('github', 'token');
+      expect(mockedGetConfigValueFromConfig).toHaveBeenCalledWith(CONFIG_SECTIONS.GITHUB, 'token');
     });
 
     it('should map COPILOT_API_TOKEN to copilot.apiToken', () => {
       mockedGetConfigValueFromConfig.mockReturnValue('copilot-token-123');
 
-      const result = getConfigValue('COPILOT_API_TOKEN');
+      const result = getConfigValue(ENV_KEYS.COPILOT_API_TOKEN);
 
       expect(result).toBe('copilot-token-123');
-      expect(mockedGetConfigValueFromConfig).toHaveBeenCalledWith('copilot', 'apiToken');
+      expect(mockedGetConfigValueFromConfig).toHaveBeenCalledWith(CONFIG_SECTIONS.COPILOT, 'apiToken');
     });
 
     it('should map DEFAULT_BRANCH to github.defaultBranch', () => {
       mockedGetConfigValueFromConfig.mockReturnValue('main');
 
-      const result = getConfigValue('DEFAULT_BRANCH');
+      const result = getConfigValue(ENV_KEYS.DEFAULT_BRANCH);
 
       expect(result).toBe('main');
-      expect(mockedGetConfigValueFromConfig).toHaveBeenCalledWith('github', 'defaultBranch');
+      expect(mockedGetConfigValueFromConfig).toHaveBeenCalledWith(CONFIG_SECTIONS.GITHUB, 'defaultBranch');
     });
 
     it('should map JIRA_PROJECT_KEY to jira.projectKey', () => {
       mockedGetConfigValueFromConfig.mockReturnValue('PROJ');
 
-      const result = getConfigValue('JIRA_PROJECT_KEY');
+      const result = getConfigValue(ENV_KEYS.JIRA_PROJECT_KEY);
 
       expect(result).toBe('PROJ');
-      expect(mockedGetConfigValueFromConfig).toHaveBeenCalledWith('jira', 'projectKey');
+      expect(mockedGetConfigValueFromConfig).toHaveBeenCalledWith(CONFIG_SECTIONS.JIRA, 'projectKey');
     });
 
     it('should fall back to process.env for unknown keys', () => {
@@ -127,7 +127,7 @@ describe('Validation Utils', () => {
     it('should return undefined when config value is falsy', () => {
       mockedGetConfigValueFromConfig.mockReturnValue('');
 
-      const result = getConfigValue('JIRA_BASE_URL');
+      const result = getConfigValue(ENV_KEYS.JIRA_BASE_URL);
 
       expect(result).toBeUndefined();
     });

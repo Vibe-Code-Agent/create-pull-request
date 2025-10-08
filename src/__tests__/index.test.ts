@@ -45,6 +45,24 @@ jest.mock('../constants/index', () => ({
         CLI_NAME: 'test-cli',
         CLI_VERSION: '1.0.0',
         DEFAULT_BRANCH: 'main'
+    },
+    CONFIG_SECTIONS: {
+        JIRA: 'jira',
+        GITHUB: 'github',
+        COPILOT: 'copilot',
+        AI_PROVIDERS: 'aiProviders'
+    },
+    ENV_KEYS: {
+        JIRA_BASE_URL: 'JIRA_BASE_URL',
+        JIRA_USERNAME: 'JIRA_USERNAME',
+        JIRA_API_TOKEN: 'JIRA_API_TOKEN',
+        JIRA_PROJECT_KEY: 'JIRA_PROJECT_KEY',
+        GITHUB_TOKEN: 'GITHUB_TOKEN',
+        DEFAULT_BRANCH: 'DEFAULT_BRANCH',
+        ANTHROPIC_API_KEY: 'ANTHROPIC_API_KEY',
+        OPENAI_API_KEY: 'OPENAI_API_KEY',
+        GEMINI_API_KEY: 'GEMINI_API_KEY',
+        COPILOT_API_TOKEN: 'COPILOT_API_TOKEN'
     }
 }));
 
@@ -202,6 +220,7 @@ describe('src/index.ts', () => {
 
         describe('config command handler', () => {
             it('should display configuration instructions', () => {
+                const { ENV_KEYS } = require('../constants/index');
                 const configCommandHandler = () => {
                     console.log('blue:📋 Configuration Setup:\n');
                     console.log('🎯 ' + 'bold:Recommended: Use the interactive setup wizard');
@@ -210,15 +229,15 @@ describe('src/index.ts', () => {
                     console.log('⚙️  ' + 'bold:Alternative: Manual configuration');
                     console.log('1. Copy .env.example to .env');
                     console.log('2. Fill in your credentials:\n');
-                    console.log('yellow:   JIRA_BASE_URL' + '=https://your-company.atlassian.net');
-                    console.log('yellow:   JIRA_USERNAME' + '=your-email@company.com');
-                    console.log('yellow:   JIRA_API_TOKEN' + '=your-jira-api-token');
-                    console.log('yellow:   GITHUB_TOKEN' + '=your-github-personal-access-token');
+                    console.log('yellow:   ' + ENV_KEYS.JIRA_BASE_URL + '=https://your-company.atlassian.net');
+                    console.log('yellow:   ' + ENV_KEYS.JIRA_USERNAME + '=your-email@company.com');
+                    console.log('yellow:   ' + ENV_KEYS.JIRA_API_TOKEN + '=your-jira-api-token');
+                    console.log('yellow:   ' + ENV_KEYS.GITHUB_TOKEN + '=your-github-personal-access-token');
                     console.log('\n🤖 ' + 'bold:AI Providers (Primary: Claude Code → OpenAI → Fallback: Gemini → Copilot):');
-                    console.log('yellow:   OPENAI_API_KEY' + '=your-openai-api-key ' + 'gray:(fallback)');
-                    console.log('yellow:   GEMINI_API_KEY' + '=your-gemini-api-key ' + 'gray:(fallback)');
-                    console.log('yellow:   ANTHROPIC_API_KEY' + '=your-anthropic-api-key ' + 'gray:(recommended)');
-                    console.log('yellow:   COPILOT_API_TOKEN' + '=your-copilot-api-token ' + 'gray:(fallback)\n');
+                    console.log('yellow:   ' + ENV_KEYS.OPENAI_API_KEY + '=your-openai-api-key ' + 'gray:(fallback)');
+                    console.log('yellow:   ' + ENV_KEYS.GEMINI_API_KEY + '=your-gemini-api-key ' + 'gray:(fallback)');
+                    console.log('yellow:   ' + ENV_KEYS.ANTHROPIC_API_KEY + '=your-anthropic-api-key ' + 'gray:(recommended)');
+                    console.log('yellow:   ' + ENV_KEYS.COPILOT_API_TOKEN + '=your-copilot-api-token ' + 'gray:(fallback)\n');
 
                     console.log('📝 ' + 'bold:Important notes:');
                     console.log('• Make sure your GitHub token has repo permissions');
@@ -241,17 +260,17 @@ describe('src/index.ts', () => {
                 expect(mockConsoleLog).toHaveBeenCalledWith('2. Fill in your credentials:\n');
 
                 // Check for environment variable examples
-                expect(mockConsoleLog).toHaveBeenCalledWith('yellow:   JIRA_BASE_URL' + '=https://your-company.atlassian.net');
-                expect(mockConsoleLog).toHaveBeenCalledWith('yellow:   JIRA_USERNAME' + '=your-email@company.com');
-                expect(mockConsoleLog).toHaveBeenCalledWith('yellow:   JIRA_API_TOKEN' + '=your-jira-api-token');
-                expect(mockConsoleLog).toHaveBeenCalledWith('yellow:   GITHUB_TOKEN' + '=your-github-personal-access-token');
+                expect(mockConsoleLog).toHaveBeenCalledWith('yellow:   ' + ENV_KEYS.JIRA_BASE_URL + '=https://your-company.atlassian.net');
+                expect(mockConsoleLog).toHaveBeenCalledWith('yellow:   ' + ENV_KEYS.JIRA_USERNAME + '=your-email@company.com');
+                expect(mockConsoleLog).toHaveBeenCalledWith('yellow:   ' + ENV_KEYS.JIRA_API_TOKEN + '=your-jira-api-token');
+                expect(mockConsoleLog).toHaveBeenCalledWith('yellow:   ' + ENV_KEYS.GITHUB_TOKEN + '=your-github-personal-access-token');
 
                 // Check for AI provider instructions
                 expect(mockConsoleLog).toHaveBeenCalledWith('\n🤖 ' + 'bold:AI Providers (Primary: Claude Code → OpenAI → Fallback: Gemini → Copilot):');
-                expect(mockConsoleLog).toHaveBeenCalledWith('yellow:   OPENAI_API_KEY' + '=your-openai-api-key ' + 'gray:(fallback)');
-                expect(mockConsoleLog).toHaveBeenCalledWith('yellow:   GEMINI_API_KEY' + '=your-gemini-api-key ' + 'gray:(fallback)');
-                expect(mockConsoleLog).toHaveBeenCalledWith('yellow:   ANTHROPIC_API_KEY' + '=your-anthropic-api-key ' + 'gray:(recommended)');
-                expect(mockConsoleLog).toHaveBeenCalledWith('yellow:   COPILOT_API_TOKEN' + '=your-copilot-api-token ' + 'gray:(fallback)\n');
+                expect(mockConsoleLog).toHaveBeenCalledWith('yellow:   ' + ENV_KEYS.OPENAI_API_KEY + '=your-openai-api-key ' + 'gray:(fallback)');
+                expect(mockConsoleLog).toHaveBeenCalledWith('yellow:   ' + ENV_KEYS.GEMINI_API_KEY + '=your-gemini-api-key ' + 'gray:(fallback)');
+                expect(mockConsoleLog).toHaveBeenCalledWith('yellow:   ' + ENV_KEYS.ANTHROPIC_API_KEY + '=your-anthropic-api-key ' + 'gray:(recommended)');
+                expect(mockConsoleLog).toHaveBeenCalledWith('yellow:   ' + ENV_KEYS.COPILOT_API_TOKEN + '=your-copilot-api-token ' + 'gray:(fallback)\n');
 
                 // Check for important notes
                 expect(mockConsoleLog).toHaveBeenCalledWith('📝 ' + 'bold:Important notes:');

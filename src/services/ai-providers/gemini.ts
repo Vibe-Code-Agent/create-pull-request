@@ -1,5 +1,5 @@
 import { BaseAIProvider } from './base.js';
-import { API_URLS, DEFAULT_MODELS, AI_PROVIDERS } from '../../constants/index.js';
+import { API_URLS, DEFAULT_MODELS, AI_PROVIDERS, LIMITS } from '../../constants/index.js';
 
 export class GeminiProvider extends BaseAIProvider {
   constructor(apiKey: string, model?: string) {
@@ -32,7 +32,7 @@ export class GeminiProvider extends BaseAIProvider {
         }
       ],
       generationConfig: {
-        maxOutputTokens: 4000,
+        maxOutputTokens: LIMITS.MAX_API_TOKENS,
         temperature: 0.7
       }
     };

@@ -1,11 +1,11 @@
 import { BaseAtlassianService } from './base.js';
-import { CONFLUENCE_ENDPOINTS, LIMITS } from '../../constants/index.js';
+import { CONFLUENCE_ENDPOINTS, LIMITS, CONFIG_SECTIONS } from '../../constants/index.js';
 
 import { ConfluencePage } from '../../interface/jira-confluence.js';
 
 export class ConfluenceService extends BaseAtlassianService {
     constructor() {
-        super('jira'); // Use jira config since Confluence typically shares the same credentials
+        super(CONFIG_SECTIONS.JIRA); // Use jira config since Confluence typically shares the same credentials
 
         // Override base URL to include Confluence API version
         this.client.defaults.baseURL = `${this.config.baseUrl}${CONFLUENCE_ENDPOINTS.API_VERSION}`;

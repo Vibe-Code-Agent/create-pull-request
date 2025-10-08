@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { GeminiProvider } from '../../services/ai-providers/gemini.js';
-import { DEFAULT_MODELS, AI_PROVIDERS } from '../../constants/index.js';
+import { DEFAULT_MODELS, AI_PROVIDERS, LIMITS } from '../../constants/index.js';
 
 // Mock axios
 jest.mock('axios');
@@ -82,7 +82,7 @@ describe('GeminiProvider', () => {
           }
         ],
         generationConfig: {
-          maxOutputTokens: 4000,
+          maxOutputTokens: LIMITS.MAX_API_TOKENS,
           temperature: 0.7
         }
       });
@@ -186,7 +186,7 @@ describe('GeminiProvider', () => {
             }
           ],
           generationConfig: {
-            maxOutputTokens: 4000,
+            maxOutputTokens: LIMITS.MAX_API_TOKENS,
             temperature: 0.7
           }
         }

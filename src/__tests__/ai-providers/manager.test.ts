@@ -1,7 +1,7 @@
 import inquirer from 'inquirer';
 import { AIProviderManager } from '../../services/ai-providers/manager.js';
 import { getConfig } from '../../utils/config.js';
-import { AI_PROVIDERS, AI_PROVIDER_NAMES } from '../../constants/index.js';
+import { AI_PROVIDERS, AI_PROVIDER_NAMES, ENV_KEYS, CONFIG_SECTIONS } from '../../constants/index.js';
 
 // Mock dependencies
 jest.mock('inquirer');
@@ -17,17 +17,17 @@ describe('AIProviderManager', () => {
     jest.clearAllMocks();
 
     // Mock environment variables
-    process.env.ANTHROPIC_API_KEY = 'claude-key';
-    process.env.OPENAI_API_KEY = 'openai-key';
-    process.env.GEMINI_API_KEY = 'gemini-key';
+    process.env[ENV_KEYS.ANTHROPIC_API_KEY] = 'claude-key';
+    process.env[ENV_KEYS.OPENAI_API_KEY] = 'openai-key';
+    process.env[ENV_KEYS.GEMINI_API_KEY] = 'gemini-key';
 
     mockedGetConfig.mockImplementation((key: string) => {
       switch (key) {
-        case 'github':
+        case CONFIG_SECTIONS.GITHUB:
           return { token: 'github-token' };
-        case AI_PROVIDERS.COPILOT:
+        case CONFIG_SECTIONS.COPILOT:
           return { token: 'copilot-token' };
-        case 'aiProviders':
+        case CONFIG_SECTIONS.AI_PROVIDERS:
           return {
             claude: { apiKey: 'config-claude-key', model: 'claude-3-sonnet' },
             openai: { apiKey: 'config-openai-key', model: 'gpt-4' },
@@ -41,9 +41,9 @@ describe('AIProviderManager', () => {
 
   afterEach(() => {
     // Clean up environment variables
-    delete process.env.ANTHROPIC_API_KEY;
-    delete process.env.OPENAI_API_KEY;
-    delete process.env.GEMINI_API_KEY;
+    delete process.env[ENV_KEYS.ANTHROPIC_API_KEY];
+    delete process.env[ENV_KEYS.OPENAI_API_KEY];
+    delete process.env[ENV_KEYS.GEMINI_API_KEY];
   });
 
   describe('constructor', () => {
@@ -103,28 +103,28 @@ describe('AIProviderManager', () => {
       });
 
       // Clear environment variables
-      delete process.env.ANTHROPIC_API_KEY;
-      delete process.env.OPENAI_API_KEY;
-      delete process.env.GEMINI_API_KEY;
+      delete process.env[ENV_KEYS.ANTHROPIC_API_KEY];
+      delete process.env[ENV_KEYS.OPENAI_API_KEY];
+      delete process.env[ENV_KEYS.GEMINI_API_KEY];
 
       manager = new AIProviderManager();
 
       await expect(manager.selectProvider()).rejects.toThrow(
-        'No AI providers configured. Please set ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, or configure GitHub Copilot.'
+        `No AI providers configured. Please set ${ENV_KEYS.ANTHROPIC_API_KEY}, ${ENV_KEYS.OPENAI_API_KEY}, ${ENV_KEYS.GEMINI_API_KEY}, or configure GitHub Copilot.`
       );
     });
 
     it('should return single provider without prompting', async () => {
       // Clear environment variables
-      delete process.env.ANTHROPIC_API_KEY;
+      delete process.env[ENV_KEYS.ANTHROPIC_API_KEY];
       delete process.env.CLAUDE_API_KEY;
-      delete process.env.OPENAI_API_KEY;
-      delete process.env.OPENAI_API_KEY;
-      delete process.env.GEMINI_API_KEY;
+      delete process.env[ENV_KEYS.OPENAI_API_KEY];
+      delete process.env[ENV_KEYS.OPENAI_API_KEY];
+      delete process.env[ENV_KEYS.GEMINI_API_KEY];
       delete process.env.GOOGLE_API_KEY;
 
       mockedGetConfig.mockImplementation((key: string) => {
-        if (key === 'aiProviders') {
+        if (key === CONFIG_SECTIONS.AI_PROVIDERS) {
           return { claude: { apiKey: 'claude-key' } };
         }
         throw new Error('Config not found');

@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import { BaseAtlassianService } from '../../services/atlassian/base.js';
 import { getConfig } from '../../utils/config.js';
+import { CONFIG_SECTIONS } from '../../constants/index.js';
 
 // Mock dependencies
 jest.mock('axios');
@@ -15,7 +16,7 @@ const mockedGetConfig = getConfig as jest.MockedFunction<typeof getConfig>;
 // Create a concrete implementation for testing
 class TestAtlassianService extends BaseAtlassianService {
     constructor() {
-        super('jira');
+        super(CONFIG_SECTIONS.JIRA);
     }
 }
 
