@@ -303,17 +303,18 @@ async function selectPRTemplate(githubService: GitHubService, spinner: ReturnTyp
 /**
  * Handle content generation and editing loop
  */
-async function handleContentGenerationAndEditing(
-  aiDescriptionService: AIDescriptionGeneratorService,
-  spinner: ReturnType<typeof createSpinner>,
-  ticketInfo: any,
-  gitChanges: any,
-  selectedTemplate: any,
-  diffContent: string,
-  options: CreatePROptions,
-  repo: any,
-  currentBranch: string
-): Promise<{ finalTitle: string; finalBody: string; finalSummary?: string } | null> {
+async function handleContentGenerationAndEditing(params: {
+  aiDescriptionService: AIDescriptionGeneratorService;
+  spinner: ReturnType<typeof createSpinner>;
+  ticketInfo: any;
+  gitChanges: any;
+  selectedTemplate: any;
+  diffContent: string;
+  options: CreatePROptions;
+  repo: any;
+  currentBranch: string;
+}): Promise<{ finalTitle: string; finalBody: string; finalSummary?: string } | null> {
+  const { aiDescriptionService, spinner, ticketInfo, gitChanges, selectedTemplate, diffContent, options, repo, currentBranch } = params;
   spinner.start('Generating pull request description with AI...');
   let generatedContent = await generatePRDescriptionWithRetry({
     aiDescriptionService,
@@ -501,16 +502,18 @@ function validateAndApplyFallbacks(
 /**
  * Create or update pull request and display results
  */
-async function createOrUpdatePR(
-  repo: any,
-  finalTitle: string,
-  finalBody: string,
-  currentBranch: string,
-  baseBranch: string,
-  options: CreatePROptions,
-  githubService: GitHubService,
-  spinner: ReturnType<typeof createSpinner>
-): Promise<any> {
+async function createOrUpdatePR(params: {
+  repo: any;
+  finalTitle: string;
+  finalBody: string;
+  currentBranch: string;
+  baseBranch: string;
+  options: CreatePROptions;
+  githubService: GitHubService;
+  spinner: ReturnType<typeof createSpinner>;
+}): Promise<any> {
+  const { repo, finalTitle, finalBody, currentBranch, baseBranch, options, githubService, spinner } = params;
+
   spinner.start('Creating or updating pull request on GitHub...');
 
   const result = await githubService.createOrUpdatePullRequest(repo, {
@@ -594,7 +597,7 @@ async function handlePRCreation(params: {
   spinner.start('Ensuring branch is pushed to remote...');
   await gitService.pushCurrentBranch();
 
-  const pullRequest = await createOrUpdatePR(
+  const pullRequest = await createOrUpdatePR({
     repo,
     finalTitle,
     finalBody,
@@ -603,7 +606,7 @@ async function handlePRCreation(params: {
     options,
     githubService,
     spinner
-  );
+  });
 
   await handleBrowserOpening(pullRequest);
 }
@@ -645,7 +648,7 @@ export async function createPullRequest(options: CreatePROptions): Promise<void>
     spinner.succeed('Code analysis complete');
 
     // Handle content generation and editing
-    const contentResult = await handleContentGenerationAndEditing(
+    const contentResult = await handleContentGenerationAndEditing({
       aiDescriptionService,
       spinner,
       ticketInfo,
@@ -655,7 +658,7 @@ export async function createPullRequest(options: CreatePROptions): Promise<void>
       options,
       repo,
       currentBranch
-    );
+    });
 
     if (!contentResult) {
       return; // User cancelled
