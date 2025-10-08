@@ -1,5 +1,5 @@
 import { BaseAIProvider } from './base.js';
-import { AI_PROVIDERS } from '../../constants/index.js';
+import { AI_PROVIDERS, LIMITS } from '../../constants/index.js';
 
 export class CopilotProvider extends BaseAIProvider {
   constructor(apiKey: string, model?: string) {
@@ -32,7 +32,7 @@ export class CopilotProvider extends BaseAIProvider {
           content: prompt
         }
       ],
-      max_tokens: 4000,
+      max_tokens: LIMITS.MAX_API_TOKENS,
       temperature: 0.7
     };
   }

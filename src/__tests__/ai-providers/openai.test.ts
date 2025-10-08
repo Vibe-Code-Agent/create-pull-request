@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { OpenAIProvider } from '../../services/ai-providers/openai.js';
-import { DEFAULT_MODELS, AI_PROVIDERS } from '../../constants/index.js';
+import { DEFAULT_MODELS, AI_PROVIDERS, LIMITS } from '../../constants/index.js';
 
 // Mock axios
 jest.mock('axios');
@@ -79,7 +79,7 @@ describe('OpenAIProvider', () => {
             content: 'test prompt'
           }
         ],
-        max_tokens: 4000,
+        max_tokens: LIMITS.MAX_API_TOKENS,
         temperature: 0.7
       });
     });
@@ -164,7 +164,7 @@ describe('OpenAIProvider', () => {
               content: 'test prompt'
             }
           ],
-          max_tokens: 4000,
+          max_tokens: LIMITS.MAX_API_TOKENS,
           temperature: 0.7
         }
       );

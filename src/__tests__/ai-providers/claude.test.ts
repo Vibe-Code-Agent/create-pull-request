@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { ClaudeProvider } from '../../services/ai-providers/claude.js';
-import { DEFAULT_MODELS, AI_PROVIDERS } from '../../constants/index.js';
+import { DEFAULT_MODELS, AI_PROVIDERS, LIMITS } from '../../constants/index.js';
 
 // Mock axios
 jest.mock('axios');
@@ -75,7 +75,7 @@ describe('ClaudeProvider', () => {
 
       expect(body).toEqual({
         model: 'claude-3-sonnet',
-        max_tokens: 4000,
+        max_tokens: LIMITS.MAX_API_TOKENS,
         messages: [
           {
             role: 'user',
@@ -138,7 +138,7 @@ describe('ClaudeProvider', () => {
         'https://api.anthropic.com/v1/messages',
         {
           model: 'claude-3-sonnet',
-          max_tokens: 4000,
+          max_tokens: LIMITS.MAX_API_TOKENS,
           messages: [
             {
               role: 'user',

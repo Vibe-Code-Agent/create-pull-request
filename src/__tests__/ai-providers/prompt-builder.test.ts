@@ -188,7 +188,7 @@ describe('PromptBuilder', () => {
             expect(prompt).toContain('Please generate a comprehensive pull request description');
             expect(prompt).toContain('Format your response as JSON with the following structure:');
             expect(prompt).toContain('```json');
-            expect(prompt).toContain('"title": "PROJ-123: [Your descriptive title here]"');
+            expect(prompt).toContain('"title": "[PROJ-123] [Your descriptive title here]"');
             expect(prompt).toContain('"summary": "Brief 2-3 sentence summary of what was implemented and why (no testing steps)"');
             expect(prompt).toContain('"description": "Comprehensive description with detailed file changes analysis"');
         });
@@ -198,7 +198,7 @@ describe('PromptBuilder', () => {
 
             expect(prompt).toContain('### Title Requirements:');
             expect(prompt).toContain('**MUST** start with the Jira ticket key: "PROJ-123"');
-            expect(prompt).toContain('Format: "PROJ-123: [Clear, descriptive title summarizing the change]"');
+            expect(prompt).toContain('Format: "[PROJ-123] [Clear, descriptive title summarizing the change]"');
         });
 
         it('should include detailed file changes requirements', () => {
@@ -222,7 +222,7 @@ describe('PromptBuilder', () => {
             const prompt = promptBuilder.buildPrompt(mockOptions);
 
             expect(prompt).toContain('### Critical Requirements:');
-            expect(prompt).toContain('Title MUST begin with "PROJ-123:"');
+            expect(prompt).toContain('Title MUST begin with "[PROJ-123]"');
             expect(prompt).toContain('Summary MUST NOT include testing/verification steps or proposed changes');
             expect(prompt).toContain('**DO NOT include any checklists** (- [ ] or - [x]) anywhere in the description');
             expect(prompt).toContain('Use prose and paragraphs instead of checklists for all content');

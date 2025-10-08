@@ -1,5 +1,5 @@
 import { BaseAIProvider } from './base.js';
-import { API_URLS, DEFAULT_MODELS, AI_PROVIDERS } from '../../constants/index.js';
+import { API_URLS, DEFAULT_MODELS, AI_PROVIDERS, LIMITS } from '../../constants/index.js';
 
 export class ClaudeProvider extends BaseAIProvider {
   constructor(apiKey: string, model?: string) {
@@ -24,7 +24,7 @@ export class ClaudeProvider extends BaseAIProvider {
   buildRequestBody(prompt: string): any {
     return {
       model: this.model,
-      max_tokens: 4000,
+      max_tokens: LIMITS.MAX_API_TOKENS,
       messages: [
         {
           role: 'user',

@@ -1,7 +1,7 @@
 import inquirer from 'inquirer';
 import { getConfig } from '../../utils/config.js';
 import { BaseAIProvider, AIProvider } from './base.js';
-import { AI_PROVIDERS, AI_PROVIDER_NAMES } from '../../constants/index.js';
+import { AI_PROVIDERS, AI_PROVIDER_NAMES, ENV_KEYS, CONFIG_SECTIONS } from '../../constants/index.js';
 import { ClaudeProvider } from './claude.js';
 import { OpenAIProvider } from './openai.js';
 import { GeminiProvider } from './gemini.js';
@@ -16,13 +16,13 @@ export class AIProviderManager {
   }
 
   private initializeProviders(): void {
-    const githubConfig = this.getConfigSafely('github');
-    const copilotConfig = this.getConfigSafely('copilot');
-    const aiProvidersConfig = this.getConfigSafely('aiProviders');
+    const githubConfig = this.getConfigSafely(CONFIG_SECTIONS.GITHUB);
+    const copilotConfig = this.getConfigSafely(CONFIG_SECTIONS.COPILOT);
+    const aiProvidersConfig = this.getConfigSafely(CONFIG_SECTIONS.AI_PROVIDERS);
 
     // Claude client (primary AI provider)
     const claudeKey = aiProvidersConfig?.claude?.apiKey ||
-      process.env.ANTHROPIC_API_KEY ||
+      process.env[ENV_KEYS.ANTHROPIC_API_KEY] ||
       process.env.CLAUDE_API_KEY;
 
     if (claudeKey) {
@@ -34,7 +34,7 @@ export class AIProviderManager {
 
     // OpenAI client
     const openaiKey = aiProvidersConfig?.openai?.apiKey ||
-      process.env.OPENAI_API_KEY;
+      process.env[ENV_KEYS.OPENAI_API_KEY];
 
     if (openaiKey) {
       this.providers.set(AI_PROVIDERS.OPENAI, new OpenAIProvider(
@@ -45,7 +45,7 @@ export class AIProviderManager {
 
     // Gemini client
     const geminiKey = aiProvidersConfig?.gemini?.apiKey ||
-      process.env.GEMINI_API_KEY ||
+      process.env[ENV_KEYS.GEMINI_API_KEY] ||
       process.env.GOOGLE_API_KEY;
 
     if (geminiKey) {
@@ -79,7 +79,7 @@ export class AIProviderManager {
     const availableProviders = Array.from(this.providers.keys());
 
     if (availableProviders.length === 0) {
-      throw new Error('No AI providers configured. Please set ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, or configure GitHub Copilot.');
+      throw new Error(`No AI providers configured. Please set ${ENV_KEYS.ANTHROPIC_API_KEY}, ${ENV_KEYS.OPENAI_API_KEY}, ${ENV_KEYS.GEMINI_API_KEY}, or configure GitHub Copilot.`);
     }
 
     // If only one provider available, use it

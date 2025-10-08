@@ -10,7 +10,7 @@ import {
   getConfigFilePath,
   EnvironmentConfig
 } from '../utils/config';
-import { CONFIG } from '../constants';
+import { CONFIG, CONFIG_SECTIONS } from '../constants';
 
 // Mock dependencies
 jest.mock('fs');
@@ -139,19 +139,19 @@ describe('Config Utils', () => {
     });
 
     it('should return specific configuration section', () => {
-      const result = getConfig('jira');
+      const result = getConfig(CONFIG_SECTIONS.JIRA);
 
       expect(result).toEqual(mockValidConfig.jira);
     });
 
     it('should return github configuration', () => {
-      const result = getConfig('github');
+      const result = getConfig(CONFIG_SECTIONS.GITHUB);
 
       expect(result).toEqual(mockValidConfig.github);
     });
 
     it('should return aiProviders configuration', () => {
-      const result = getConfig('aiProviders');
+      const result = getConfig(CONFIG_SECTIONS.AI_PROVIDERS);
 
       expect(result).toEqual(mockValidConfig.aiProviders);
     });
@@ -170,19 +170,19 @@ describe('Config Utils', () => {
     });
 
     it('should return specific configuration value', () => {
-      const result = getConfigValue('jira', 'baseUrl');
+      const result = getConfigValue(CONFIG_SECTIONS.JIRA, 'baseUrl');
 
       expect(result).toBe('https://company.atlassian.net');
     });
 
     it('should return github token', () => {
-      const result = getConfigValue('github', 'token');
+      const result = getConfigValue(CONFIG_SECTIONS.GITHUB, 'token');
 
       expect(result).toBe('github-token');
     });
 
     it('should return undefined for non-existent key', () => {
-      const result = getConfigValue('jira', 'nonexistent' as any);
+      const result = getConfigValue(CONFIG_SECTIONS.JIRA, 'nonexistent' as any);
 
       expect(result).toBeUndefined();
     });
@@ -197,8 +197,8 @@ describe('Config Utils', () => {
       const configWithNull = { ...mockValidConfig, jira: null as any };
       mockedFs.readFileSync.mockReturnValue(JSON.stringify(configWithNull));
 
-      expect(() => getConfigValue('jira', 'baseUrl')).toThrow(
-        "Configuration section 'jira' not found or invalid"
+      expect(() => getConfigValue(CONFIG_SECTIONS.JIRA, 'baseUrl')).toThrow(
+        `Configuration section '${CONFIG_SECTIONS.JIRA}' not found or invalid`
       );
     });
   });

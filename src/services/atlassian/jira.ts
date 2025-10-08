@@ -1,11 +1,11 @@
 import { BaseAtlassianService } from './base.js';
-import { API_URLS, JIRA_ENDPOINTS } from '../../constants/index.js';
+import { API_URLS, JIRA_ENDPOINTS, CONFIG_SECTIONS } from '../../constants/index.js';
 
 import { JiraTicket } from '../../interface/jira-confluence.js';
 
 export class JiraService extends BaseAtlassianService {
     constructor() {
-        super('jira');
+        super(CONFIG_SECTIONS.JIRA);
 
         // Override base URL to include Jira API version
         this.client.defaults.baseURL = `${this.config.baseUrl}${API_URLS.JIRA_API_VERSION}`;
