@@ -132,18 +132,21 @@ export class GitHubService {
       });
 
       return response.data.length > 0 ? response.data[0] : null;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Handle specific error cases with meaningful messages
-      if (error.status === HTTP_STATUS.UNAUTHORIZED) {
-        throw new Error('Authentication failed when checking for existing pull requests. Please check your GitHub token.');
-      } else if (error.status === HTTP_STATUS.FORBIDDEN) {
-        throw new Error('Access denied when checking for existing pull requests. Please check your GitHub token permissions.');
-      } else if (error.status === HTTP_STATUS.NOT_FOUND) {
-        // Repository not found - this is a valid case where we should return null
-        return null;
-      } else if (error.status === HTTP_STATUS.UNPROCESSABLE_ENTITY) {
-        // Invalid branch name or other validation error - return null as this is expected
-        return null;
+      if (error && typeof error === 'object' && 'status' in error) {
+        const httpError = error as { status: number };
+        if (httpError.status === HTTP_STATUS.UNAUTHORIZED) {
+          throw new Error('Authentication failed when checking for existing pull requests. Please check your GitHub token.');
+        } else if (httpError.status === HTTP_STATUS.FORBIDDEN) {
+          throw new Error('Access denied when checking for existing pull requests. Please check your GitHub token permissions.');
+        } else if (httpError.status === HTTP_STATUS.NOT_FOUND) {
+          // Repository not found - this is a valid case where we should return null
+          return null;
+        } else if (httpError.status === HTTP_STATUS.UNPROCESSABLE_ENTITY) {
+          // Invalid branch name or other validation error - return null as this is expected
+          return null;
+        }
       }
 
       // For network errors, rate limiting, or other transient issues, return null

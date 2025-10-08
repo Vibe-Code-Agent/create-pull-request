@@ -117,10 +117,10 @@ export class ResponseParser {
   private generateFallbackSummary(content: string): string {
     // Remove markdown formatting
     const plainText = content
-      .replace(/```[\s\S]*?```/g, '') // Remove code blocks
-      .replace(/`[^`]+`/g, '') // Remove inline code
-      .replace(/[*_#]+/g, '') // Remove markdown formatting
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove links but keep text
+      .replaceAll(/```[\s\S]*?```/g, '') // Remove code blocks
+      .replaceAll(/`[^`]+`/g, '') // Remove inline code
+      .replaceAll(/[*_#]+/g, '') // Remove markdown formatting
+      .replaceAll(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove links but keep text
       .trim();
 
     // Split into paragraphs and find first meaningful one
