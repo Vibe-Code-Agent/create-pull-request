@@ -409,8 +409,97 @@ describe('GitHubService', () => {
       expect(result).toBeNull();
     });
 
-    it('should return null when API call fails', async () => {
-      mockOctokit.rest.pulls.list.mockRejectedValue(new Error('API Error'));
+    it('should handle authentication errors (401)', async () => {
+      const error = new Error('Unauthorized');
+      (error as any).status = 401;
+
+      mockOctokit.rest.pulls.list.mockRejectedValue(error);
+
+      await expect(githubService.findExistingPullRequest(mockRepo, 'feature/test'))
+        .rejects.toThrow('Authentication failed when checking for existing pull requests. Please check your GitHub token.');
+    });
+
+    it('should handle permission errors (403)', async () => {
+      const error = new Error('Forbidden');
+      (error as any).status = 403;
+
+      mockOctokit.rest.pulls.list.mockRejectedValue(error);
+
+      await expect(githubService.findExistingPullRequest(mockRepo, 'feature/test'))
+        .rejects.toThrow('Access denied when checking for existing pull requests. Please check your GitHub token permissions.');
+    });
+
+    it('should return null for repository not found (404)', async () => {
+      const error = new Error('Not Found');
+      (error as any).status = 404;
+
+      mockOctokit.rest.pulls.list.mockRejectedValue(error);
+
+      const result = await githubService.findExistingPullRequest(mockRepo, 'feature/test');
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null for unprocessable entity (422)', async () => {
+      const error = new Error('Unprocessable Entity');
+      (error as any).status = 422;
+
+      mockOctokit.rest.pulls.list.mockRejectedValue(error);
+
+      const result = await githubService.findExistingPullRequest(mockRepo, 'feature/test');
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null for network errors without status', async () => {
+      const error = new Error('Network Error');
+
+      mockOctokit.rest.pulls.list.mockRejectedValue(error);
+
+      const result = await githubService.findExistingPullRequest(mockRepo, 'feature/test');
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null for errors without status property', async () => {
+      const error = { message: 'Some error' };
+
+      mockOctokit.rest.pulls.list.mockRejectedValue(error);
+
+      const result = await githubService.findExistingPullRequest(mockRepo, 'feature/test');
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null for non-object errors', async () => {
+      mockOctokit.rest.pulls.list.mockRejectedValue('String error');
+
+      const result = await githubService.findExistingPullRequest(mockRepo, 'feature/test');
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null for null errors', async () => {
+      mockOctokit.rest.pulls.list.mockRejectedValue(null);
+
+      const result = await githubService.findExistingPullRequest(mockRepo, 'feature/test');
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null for undefined errors', async () => {
+      mockOctokit.rest.pulls.list.mockRejectedValue(undefined);
+
+      const result = await githubService.findExistingPullRequest(mockRepo, 'feature/test');
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null for other HTTP status codes', async () => {
+      const error = new Error('Server Error');
+      (error as any).status = 500;
+
+      mockOctokit.rest.pulls.list.mockRejectedValue(error);
 
       const result = await githubService.findExistingPullRequest(mockRepo, 'feature/test');
 

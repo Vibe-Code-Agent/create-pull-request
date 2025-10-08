@@ -105,7 +105,7 @@ export class GitService {
     if ('binary' in file && file.binary) return 'modified';
 
     // Check for renames first
-    if (file.file && file.file.includes(' => ')) return 'renamed';
+    if (file.file?.includes(' => ')) return 'renamed';
 
     // Check insertions/deletions if they exist
     if ('insertions' in file && 'deletions' in file) {
