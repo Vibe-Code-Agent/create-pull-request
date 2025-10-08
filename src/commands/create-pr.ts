@@ -443,42 +443,49 @@ async function handleContentGenerationAndEditing(
 }
 
 /**
- * Handle PR creation or dry run
+ * Display dry run preview
  */
-async function handlePRCreation(
-  options: CreatePROptions,
+function displayDryRunPreview(
   repo: any,
   currentBranch: string,
   baseBranch: string,
   finalTitle: string,
   finalBody: string,
   finalSummary: string | undefined,
-  jiraTicket: string,
-  gitService: GitService,
-  githubService: GitHubService,
-  spinner: ReturnType<typeof createSpinner>
-): Promise<void> {
-  if (options.dryRun) {
-    console.log(chalk.blue('\n🔍 Dry Run - Pull Request Preview:'));
-    console.log(chalk.bold('Repository:'), `${repo.owner}/${repo.repo}`);
-    console.log(chalk.bold('From:'), currentBranch);
-    console.log(chalk.bold('To:'), baseBranch);
-    console.log(chalk.bold('Title:'), finalTitle);
-    if (finalSummary) {
-      console.log(chalk.bold('Summary:'), finalSummary);
-    }
-    console.log(chalk.bold('Draft:'), options.draft ? 'Yes' : 'No');
-    console.log(chalk.bold('Body:'), finalBody);
-    console.log(chalk.green('\n✅ Dry run completed. No pull request was created.'));
-    return;
+  options: CreatePROptions
+): void {
+  console.log(chalk.blue('\n🔍 Dry Run - Pull Request Preview:'));
+  console.log(chalk.bold('Repository:'), `${repo.owner}/${repo.repo}`);
+  console.log(chalk.bold('From:'), currentBranch);
+  console.log(chalk.bold('To:'), baseBranch);
+  console.log(chalk.bold('Title:'), finalTitle);
+  if (finalSummary) {
+    console.log(chalk.bold('Summary:'), finalSummary);
   }
+  console.log(chalk.bold('Draft:'), options.draft ? 'Yes' : 'No');
+  console.log(chalk.bold('Body:'), finalBody);
+  console.log(chalk.green('\n✅ Dry run completed. No pull request was created.'));
+}
 
-  if (!finalTitle || finalTitle.trim() === '') {
-    finalTitle = `${jiraTicket}: Auto-generated PR title`;
+/**
+ * Validate and apply fallbacks for PR content
+ */
+function validateAndApplyFallbacks(
+  finalTitle: string,
+  finalBody: string,
+  currentBranch: string,
+  baseBranch: string,
+  jiraTicket: string
+): { finalTitle: string; finalBody: string } {
+  let validatedTitle = finalTitle;
+  let validatedBody = finalBody;
+
+  if (!validatedTitle || validatedTitle.trim() === '') {
+    validatedTitle = `${jiraTicket}: Auto-generated PR title`;
     console.log(chalk.yellow('⚠️  Warning: Using fallback title as AI did not generate a valid title'));
   }
-  if (!finalBody || finalBody.trim() === '') {
-    finalBody = 'Auto-generated PR description';
+  if (!validatedBody || validatedBody.trim() === '') {
+    validatedBody = 'Auto-generated PR description';
     console.log(chalk.yellow('⚠️  Warning: Using fallback body as AI did not generate a valid description'));
   }
   if (!currentBranch || currentBranch.trim() === '') {
@@ -488,9 +495,22 @@ async function handlePRCreation(
     throw new Error('Base branch cannot be empty');
   }
 
-  spinner.start('Ensuring branch is pushed to remote...');
-  await gitService.pushCurrentBranch();
+  return { finalTitle: validatedTitle, finalBody: validatedBody };
+}
 
+/**
+ * Create or update pull request and display results
+ */
+async function createOrUpdatePR(
+  repo: any,
+  finalTitle: string,
+  finalBody: string,
+  currentBranch: string,
+  baseBranch: string,
+  options: CreatePROptions,
+  githubService: GitHubService,
+  spinner: ReturnType<typeof createSpinner>
+): Promise<any> {
   spinner.start('Creating or updating pull request on GitHub...');
 
   const result = await githubService.createOrUpdatePullRequest(repo, {
@@ -519,6 +539,13 @@ async function handlePRCreation(
     console.log(chalk.yellow('📝 Note: This is a draft pull request'));
   }
 
+  return pullRequest;
+}
+
+/**
+ * Handle browser opening for pull request
+ */
+async function handleBrowserOpening(pullRequest: any): Promise<void> {
   const { openInBrowser } = await inquirer.prompt([{
     type: 'confirm',
     name: 'openInBrowser',
@@ -534,6 +561,51 @@ async function handlePRCreation(
       console.log(chalk.yellow(`⚠️  Could not open browser automatically. Please visit: ${pullRequest.html_url}`));
     }
   }
+}
+
+/**
+ * Handle PR creation or dry run
+ */
+async function handlePRCreation(params: {
+  options: CreatePROptions;
+  repo: any;
+  currentBranch: string;
+  baseBranch: string;
+  finalTitle: string;
+  finalBody: string;
+  finalSummary: string | undefined;
+  jiraTicket: string;
+  gitService: GitService;
+  githubService: GitHubService;
+  spinner: ReturnType<typeof createSpinner>;
+}): Promise<void> {
+  const { options, repo, currentBranch, baseBranch, finalSummary, jiraTicket, gitService, githubService, spinner } = params;
+  let { finalTitle, finalBody } = params;
+
+  if (options.dryRun) {
+    displayDryRunPreview(repo, currentBranch, baseBranch, finalTitle, finalBody, finalSummary, options);
+    return;
+  }
+
+  const validatedContent = validateAndApplyFallbacks(finalTitle, finalBody, currentBranch, baseBranch, jiraTicket);
+  finalTitle = validatedContent.finalTitle;
+  finalBody = validatedContent.finalBody;
+
+  spinner.start('Ensuring branch is pushed to remote...');
+  await gitService.pushCurrentBranch();
+
+  const pullRequest = await createOrUpdatePR(
+    repo,
+    finalTitle,
+    finalBody,
+    currentBranch,
+    baseBranch,
+    options,
+    githubService,
+    spinner
+  );
+
+  await handleBrowserOpening(pullRequest);
 }
 
 export async function createPullRequest(options: CreatePROptions): Promise<void> {
@@ -592,7 +664,7 @@ export async function createPullRequest(options: CreatePROptions): Promise<void>
     const { finalTitle, finalBody, finalSummary } = contentResult;
 
     // Handle PR creation or dry run
-    await handlePRCreation(
+    await handlePRCreation({
       options,
       repo,
       currentBranch,
@@ -604,7 +676,7 @@ export async function createPullRequest(options: CreatePROptions): Promise<void>
       gitService,
       githubService,
       spinner
-    );
+    });
 
   } catch (error) {
     if (spinner.isSpinning) {
