@@ -77,7 +77,7 @@ determine_version_type() {
     if echo "$commit_messages" | grep -qi "BREAKING CHANGE\|^feat!\|^fix!\|^chore!"; then
         echo "major"
         return
-    elif echo "$commit_messages" | grep -qi "^feat\|^feature"; then
+    elif echo "$commit_messages" | grep -qi "^feat\|^feature\|^enhancement"; then
         echo "minor"
         return
     elif echo "$commit_messages" | grep -qi "^fix\|^bugfix\|^patch"; then
