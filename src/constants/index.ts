@@ -85,7 +85,9 @@ export const FILE_PATHS = {
   PR_TEMPLATE_PATHS: [
     '.github/PULL_REQUEST_TEMPLATE.md',
     'PULL_REQUEST_TEMPLATE.md',
-    '.github/PULL_REQUEST_TEMPLATE/default.md'
+    '.github/PULL_REQUEST_TEMPLATE/default.md',
+    '.github/PULL_REQUEST_TEMPLATE',
+    'PULL_REQUEST_TEMPLATE',
   ]
 } as const;
 
