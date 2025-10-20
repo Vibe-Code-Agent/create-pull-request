@@ -28,7 +28,7 @@ export class ConfluenceService extends BaseAtlassianService {
                 (link.object.url.includes('confluence') || link.object.url.includes('wiki'))
             )
             .slice(0, LIMITS.MAX_CONFLUENCE_PAGES_COUNT);
-
+            
         // Fetch content for each Confluence page
         for (const link of confluenceLinks) {
             const pageContent = await this.getConfluencePageContent(link.object.url);
