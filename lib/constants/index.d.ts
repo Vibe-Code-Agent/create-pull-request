@@ -61,9 +61,9 @@ export declare const JIRA_ENDPOINTS: {
     readonly REMOTE_LINK: "/issue/{issueKey}/remotelink";
 };
 export declare const CONFLUENCE_ENDPOINTS: {
-    readonly API_VERSION: "/rest/api";
+    readonly API_VERSION: "/wiki/api/v2";
     readonly CONTENT: "/content";
-    readonly CONTENT_BY_ID: "/content/{id}";
+    readonly CONTENT_BY_ID: "/pages/{id}";
     readonly SEARCH: "/content/search";
 };
 export declare const AI_PROVIDERS: {

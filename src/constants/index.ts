@@ -113,9 +113,9 @@ export const JIRA_ENDPOINTS = {
 
 // Confluence Endpoints
 export const CONFLUENCE_ENDPOINTS = {
-  API_VERSION: '/rest/api',
+  API_VERSION: '/wiki/api/v2',
   CONTENT: '/content',
-  CONTENT_BY_ID: '/content/{id}',
+  CONTENT_BY_ID: '/pages/{id}',
   SEARCH: '/content/search'
 } as const;
 

@@ -59,7 +59,7 @@ describe('ConfluenceService', () => {
         });
 
         it('should set correct base URL for Confluence API', () => {
-            expect(mockAxiosInstance.defaults.baseURL).toBe('https://company.atlassian.net//rest/api');
+            expect(mockAxiosInstance.defaults.baseURL).toBe('https://company.atlassian.net//wiki/api/v2');
         });
     });
 
@@ -291,7 +291,7 @@ describe('ConfluenceService', () => {
                 url: pageUrl
             });
 
-            expect(mockAxiosInstance.get).toHaveBeenCalledWith('/content/123456', {
+            expect(mockAxiosInstance.get).toHaveBeenCalledWith('/pages/123456', {
                 params: { expand: 'body.storage,space' }
             });
         });
