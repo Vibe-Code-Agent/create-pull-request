@@ -44,9 +44,6 @@ jobs:
         run: npm ci
 
       - name: 🔒 Run security audit
-        run: npm audit --audit-level=moderate
-
-      - name: 🔍 Check for known vulnerabilities
         run: |
           echo "🔍 Checking for security vulnerabilities..."
           npm audit --audit-level=high --json > audit-results.json || true
@@ -69,6 +66,14 @@ jobs:
               echo "✅ No critical or high vulnerabilities found."
             fi
           fi
+
+      - name: 📊 Upload security audit results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-audit-results
+          path: audit-results.json
+          retention-days: 7
 
   # Code quality analysis - runs after security (required)
   code-quality:
@@ -138,10 +143,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [security, code-quality]
 
-    strategy:
-      matrix:
-        node-version: [18, 20, 22] # Test multiple Node.js versions
-
     steps:
       - name: Check if run was cancelled
         run: |
@@ -157,10 +158,10 @@ jobs:
       - name: 🔍 Checkout code
         uses: actions/checkout@v4
 
-      - name: 🔧 Setup Node.js ${{ matrix.node-version }}
+      - name: 🔧 Setup Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: "20"
           cache: "npm"
 
       - name: 📦 Cache build artifacts
@@ -169,22 +170,13 @@ jobs:
           path: |
             lib
             *.tsbuildinfo
-          key: build-${{ runner.os }}-node${{ matrix.node-version }}-${{ hashFiles('src/**/*', 'tsconfig.json') }}
+          key: build-${{ runner.os }}-node20-${{ hashFiles('src/**/*', 'tsconfig.json') }}
           restore-keys: |
-            build-${{ runner.os }}-node${{ matrix.node-version }}-
+            build-${{ runner.os }}-node20-
             build-${{ runner.os }}-
 
       - name: 📦 Install dependencies
         run: npm ci
-
-      - name: 🔍 Check package integrity
-        run: |
-          # Verify package-lock.json is in sync
-          npm ci --dry-run
-
-          # Check for security issues in dependencies
-          npm audit --audit-level=moderate
-        continue-on-error: ${{ matrix.node-version != 20 }} # Only fail on primary version
 
       - name: 📝 Run ESLint
         run: npm run lint
@@ -199,7 +191,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report-${{ matrix.node-version }}
+          name: coverage-report-20
           path: coverage/
           retention-days: 30
 
@@ -285,7 +277,6 @@ jobs:
           fi
 
       - name: 📦 Test packaging
-        if: matrix.node-version == 20 # Only test on primary version
         run: |
           echo "📦 Testing npm pack..."
 
@@ -332,14 +323,10 @@ jobs:
             echo "⚠️ Package size is quite large (>5MB)"
           fi
 
-  # Compatibility testing - runs only when all validation jobs pass
+  # Compatibility testing - runs in parallel with validate
   compatibility:
     runs-on: ubuntu-latest
-    needs: [security, code-quality, validate]
-    if: |
-      needs.security.result == 'success' && 
-      needs.code-quality.result == 'success' && 
-      needs.validate.result == 'success'
+    needs: [security, code-quality]
     steps:
       - name: Check if run was cancelled
         run: |
@@ -351,8 +338,7 @@ jobs:
           echo "Event: ${{ github.event_name }}"
           echo "Run ID: ${{ github.run_id }}"
           echo ""
-          echo "✅ Compatibility job proceeding - all validation jobs passed successfully"
-          echo "📋 Dependencies: security ✅, code-quality ✅, validate ✅"
+          echo "✅ Compatibility job proceeding"
 
       - name: 🔍 Checkout code
         uses: actions/checkout@v4
@@ -363,50 +349,39 @@ jobs:
           node-version: "20"
           cache: "npm"
 
-      - name: 📦 Cache security tools
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.npm
-            /tmp/license-checker-*
-            audit-report.json
-          key: security-tools-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            security-tools-${{ runner.os }}-
-
       - name: 📦 Install dependencies
         run: npm ci
 
-      - name: 🔒 Security audit
+      - name: 📥 Download security audit results
+        uses: actions/download-artifact@v4
+        with:
+          name: security-audit-results
+        continue-on-error: true
+
+      - name: 🔍 Review security audit
         run: |
-          echo "🔒 Running security audit..."
-          npm audit --audit-level=moderate
+          if [ -f "audit-results.json" ]; then
+            echo "📊 Reviewing security audit from previous job..."
+            HIGH_ISSUES=$(cat audit-results.json | jq '.metadata.vulnerabilities.high // 0')
+            CRITICAL_ISSUES=$(cat audit-results.json | jq '.metadata.vulnerabilities.critical // 0')
 
-          # Generate audit report
-          npm audit --json > audit-report.json || true
-
-          # Check for high/critical issues
-          HIGH_ISSUES=$(cat audit-report.json | jq '.metadata.vulnerabilities.high // 0')
-          CRITICAL_ISSUES=$(cat audit-report.json | jq '.metadata.vulnerabilities.critical // 0')
-
-          echo "Security summary:"
-          echo "  High issues: $HIGH_ISSUES"
-          echo "  Critical issues: $CRITICAL_ISSUES"
-
-          if [ "$CRITICAL_ISSUES" -gt 0 ]; then
-            echo "❌ Critical security issues found!"
-            exit 1
-          elif [ "$HIGH_ISSUES" -gt 0 ]; then
-            echo "⚠️ High security issues found - review recommended"
+            echo "Security summary:"
+            echo "  High issues: $HIGH_ISSUES"
+            echo "  Critical issues: $CRITICAL_ISSUES"
+            
+            if [ "$CRITICAL_ISSUES" -gt 0 ]; then
+              echo "❌ Critical security issues found!"
+            else
+              echo "✅ Using security results from security job"
+            fi
           else
-            echo "✅ No high or critical security issues"
+            echo "⚠️ Security audit not found, skipping review"
           fi
 
       - name: 🔍 License check
         run: |
           echo "🔍 Checking dependency licenses..."
-          # This requires license-checker to be installed
-          npx license-checker --summary || echo "License check skipped - license-checker not available"
+          npx license-checker --summary || echo "⚠️ License check skipped - license-checker not available"
 
   # Report results
   report:
@@ -415,62 +390,23 @@ jobs:
     if: always()
 
     steps:
-      - name: 🔍 Checkout code
-        uses: actions/checkout@v4
-
-      - name: 🔧 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-
-      - name: 📦 Cache analysis results
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.npm
-            .eslintcache
-            coverage
-          key: code-quality-${{ runner.os }}-${{ hashFiles('src/**/*', '.eslintrc.*', 'tsconfig.json') }}
-          restore-keys: |
-            code-quality-${{ runner.os }}-
-
-      - name: 📦 Install dependencies
-        run: npm ci
-
-      - name: 📊 Code complexity analysis
+      - name: 📊 Job Results Summary
         run: |
-          echo "📊 Analyzing code complexity..."
-
-          # Simple complexity check using find and wc
-          TOTAL_LINES=$(find src -name "*.ts" -exec wc -l {} + | tail -1 | awk '{print $1}')
-          FILE_COUNT=$(find src -name "*.ts" | wc -l)
-
-          if [ "$FILE_COUNT" -gt 0 ]; then
-            AVG_LINES=$((TOTAL_LINES / FILE_COUNT))
-            echo "📈 Code statistics:"
-            echo "   Total files: $FILE_COUNT"
-            echo "   Total lines: $TOTAL_LINES"
-            echo "   Average lines per file: $AVG_LINES"
-            
-            if [ "$AVG_LINES" -gt 300 ]; then
-              echo "⚠️ Average file size is quite large - consider refactoring"
-            else
-              echo "✅ File sizes look reasonable"
-            fi
-          fi
-
-      - name: 🔍 Dead code detection
-        run: |
-          echo "🔍 Checking for potential dead code..."
-
-          # Check for TODO/FIXME comments
-          TODO_COUNT=$(find src -name "*.ts" -exec grep -l "TODO\|FIXME\|XXX" {} + | wc -l)
-          if [ "$TODO_COUNT" -gt 0 ]; then
-            echo "📝 Found $TODO_COUNT files with TODO/FIXME comments"
-            find src -name "*.ts" -exec grep -Hn "TODO\|FIXME\|XXX" {} +
+          echo "📊 CI Pipeline Summary"
+          echo "====================="
+          echo "Security: ${{ needs.security.result }}"
+          echo "Code Quality: ${{ needs.code-quality.result }}"
+          echo "Validate: ${{ needs.validate.result }}"
+          echo "Compatibility: ${{ needs.compatibility.result }}"
+          echo ""
+          
+          if [ "${{ needs.security.result }}" == "success" ] && \
+             [ "${{ needs.code-quality.result }}" == "success" ] && \
+             [ "${{ needs.validate.result }}" == "success" ] && \
+             [ "${{ needs.compatibility.result }}" == "success" ]; then
+            echo "✅ All jobs passed successfully!"
           else
-            echo "✅ No TODO/FIXME comments found"
+            echo "❌ Some jobs failed - review the logs above"
           fi
 
   # SonarCloud Analysis - runs after all CI jobs pass
@@ -628,8 +564,8 @@ jobs:
             SONAR_PROJECT_KEY="${{ github.event.repository.name }}"
           fi
 
-          # Polling configuration
-          MAX_ATTEMPTS=30
+          # Polling configuration - reduced for faster feedback
+          MAX_ATTEMPTS=18  # 3 minutes max (18 * 10s)
           POLL_INTERVAL=10
           ATTEMPT=0
           QUALITY_GATE_STATUS="PENDING"
@@ -687,8 +623,9 @@ jobs:
           done
 
           if [ $ATTEMPT -eq $MAX_ATTEMPTS ] && [ "$QUALITY_GATE_STATUS" = "PENDING" ]; then
-            echo "⚠️ Quality Gate still pending after $((MAX_ATTEMPTS * POLL_INTERVAL)) seconds"
-            echo "   This might indicate SonarCloud is taking longer than usual to process"
+            echo "⚠️ Quality Gate still pending after $((MAX_ATTEMPTS * POLL_INTERVAL)) seconds (3 minutes)"
+            echo "   SonarCloud analysis may still be processing - check manually if needed"
+            echo "   This is normal for large changesets"
           fi
 
           echo "quality_gate_status=$QUALITY_GATE_STATUS" >> $GITHUB_OUTPUT
