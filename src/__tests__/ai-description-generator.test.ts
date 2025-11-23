@@ -9,10 +9,6 @@ jest.mock('../services/ai-providers/manager.js');
 jest.mock('../services/ai-providers/prompt-builder.js');
 jest.mock('../services/ai-providers/response-parser.js');
 
-const MockedAIProviderManager = AIProviderManager as jest.MockedClass<typeof AIProviderManager>;
-const MockedPromptBuilder = PromptBuilder as jest.MockedClass<typeof PromptBuilder>;
-const MockedResponseParser = ResponseParser as jest.MockedClass<typeof ResponseParser>;
-
 describe('AIDescriptionGeneratorService', () => {
   let service: AIDescriptionGeneratorService;
   let mockProviderManager: jest.Mocked<AIProviderManager>;
