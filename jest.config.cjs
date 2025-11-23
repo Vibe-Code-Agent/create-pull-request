@@ -4,13 +4,13 @@ if (!process.env.NODE_OPTIONS || !process.env.NODE_OPTIONS.includes('--localstor
   const os = require('os');
   const path = require('path');
   const fs = require('fs');
-  
+
   // Create a stable temp directory for Jest
   const tempDir = path.join(os.tmpdir(), 'jest-localstorage');
   if (!fs.existsSync(tempDir)) {
     fs.mkdirSync(tempDir, { recursive: true });
   }
-  
+
   const tempFile = path.join(tempDir, `storage-${process.pid}`);
   process.env.NODE_OPTIONS = (process.env.NODE_OPTIONS || '') + ` --localstorage-file=${tempFile}`;
 }
