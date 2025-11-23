@@ -196,18 +196,15 @@ async function getJiraTicketId(options: CreatePROptions, currentBranch: string):
 /**
  * Handle Jira ticket information and Confluence pages
  */
-async function handleJiraTicketInfo(jiraService: JiraService, jiraTicket: string, spinner: ReturnType<typeof createSpinner>): Promise<any> {
-  spinner.text = 'Fetching Jira ticket information...';
+async function handleJiraTicketInfo(jiraService: JiraService, jiraTicket: string): Promise<any> {
   let ticketInfo = await jiraService.getTicket(jiraTicket);
-  spinner.succeed('Jira ticket information fetched');
 
   console.log(chalk.green(`🎫 Using Jira ticket: ${ticketInfo.key} - ${ticketInfo.summary}`));
 
-  spinner.start('Checking for linked Confluence pages...');
   const hasConfluence = await jiraService.hasConfluencePages(jiraTicket);
 
   if (hasConfluence) {
-    spinner.succeed('Found linked Confluence pages');
+    console.log(chalk.blue('📄 Found linked Confluence pages'));
     const { includeConfluence } = await inquirer.prompt([{
       type: 'confirm',
       name: 'includeConfluence',
@@ -216,12 +213,10 @@ async function handleJiraTicketInfo(jiraService: JiraService, jiraTicket: string
     }]);
 
     if (includeConfluence) {
-      spinner.start('Fetching Confluence pages content...');
       ticketInfo = await jiraService.getTicket(jiraTicket, true);
-      spinner.succeed(`Loaded ${ticketInfo.confluencePages?.length || 0} Confluence page(s)`);
 
       if (ticketInfo.confluencePages && ticketInfo.confluencePages.length > 0) {
-        console.log(chalk.blue('📄 Confluence pages found:'));
+        console.log(chalk.blue(`📄 Loaded ${ticketInfo.confluencePages.length} Confluence page(s):`));
         for (const page of ticketInfo.confluencePages) {
           console.log(chalk.blue(`   • ${page.title}`));
         }
@@ -229,8 +224,6 @@ async function handleJiraTicketInfo(jiraService: JiraService, jiraTicket: string
     } else {
       console.log(chalk.yellow('⏭️  Skipping Confluence content'));
     }
-  } else {
-    spinner.succeed('No Confluence pages linked to this ticket');
   }
 
   return ticketInfo;
@@ -244,11 +237,8 @@ async function analyzeRepositoryChanges(
   gitService: GitService,
   githubService: GitHubService,
   baseBranch: string,
-  currentBranch: string,
-  spinner: ReturnType<typeof createSpinner>
+  currentBranch: string
 ): Promise<{ gitChanges: any; repo: any }> {
-  spinner.start('Analyzing repository and changes...');
-
   // Parallel: Check branch existence and get current repo (independent operations)
   const [baseExists, repo] = await Promise.all([
     gitService.branchExists(baseBranch),
@@ -260,13 +250,13 @@ async function analyzeRepositoryChanges(
   }
 
   const gitChanges = await gitService.getChanges(baseBranch, true);
-  spinner.succeed(`Repository: ${repo.owner}/${repo.repo}, Branch: ${currentBranch}`);
 
   if (gitChanges.totalFiles === 0) {
     throw new Error(`No changes detected between '${baseBranch}' and '${currentBranch}'`);
   }
 
-  console.log(chalk.blue(`\n📊 Changes Summary:`));
+  console.log(chalk.blue(`\n📊 Repository: ${repo.owner}/${repo.repo}, Branch: ${currentBranch}`));
+  console.log(chalk.blue(`📊 Changes Summary:`));
   console.log(`   Files changed: ${gitChanges.totalFiles}`);
   console.log(`   Insertions: +${gitChanges.totalInsertions}`);
   console.log(`   Deletions: -${gitChanges.totalDeletions}`);
@@ -277,13 +267,11 @@ async function analyzeRepositoryChanges(
 /**
  * Select PR template
  */
-async function selectPRTemplate(githubService: GitHubService, spinner: ReturnType<typeof createSpinner>): Promise<any> {
-  spinner.start('Looking for pull request templates...');
+async function selectPRTemplate(githubService: GitHubService): Promise<any> {
   const templates = await githubService.getPullRequestTemplates();
   let selectedTemplate = templates.length > 0 ? templates[0] : undefined;
 
   if (templates.length > 1) {
-    spinner.stop();
     const { template } = await inquirer.prompt([{
       type: 'list',
       name: 'template',
@@ -294,13 +282,12 @@ async function selectPRTemplate(githubService: GitHubService, spinner: ReturnTyp
       ]
     }]);
     selectedTemplate = template;
-    spinner.start();
   }
 
   if (selectedTemplate) {
-    spinner.succeed(`Using PR template: ${selectedTemplate.name}`);
+    console.log(chalk.blue(`📝 Using PR template: ${selectedTemplate.name}`));
   } else {
-    spinner.succeed('No PR template found, using default format');
+    console.log(chalk.blue(`📝 No PR template found, using default format`));
   }
 
   return selectedTemplate;
@@ -638,13 +625,16 @@ export async function createPullRequest(options: CreatePROptions): Promise<void>
     const currentBranch = await gitService.getCurrentBranch();
     const jiraTicket = await getJiraTicketId(options, currentBranch);
     const baseBranch = options.base || CONFIG.DEFAULT_BRANCH;
+    spinner.stop();
 
     // Parallel: Fetch Jira ticket, analyze repo, and get templates (independent operations)
+    console.log(chalk.blue('\n🔄 Fetching information in parallel...'));
     const [ticketInfo, { gitChanges, repo }, selectedTemplate] = await Promise.all([
-      handleJiraTicketInfo(jiraService, jiraTicket, spinner),
-      analyzeRepositoryChanges(gitService, githubService, baseBranch, currentBranch, spinner),
-      selectPRTemplate(githubService, spinner)
+      handleJiraTicketInfo(jiraService, jiraTicket),
+      analyzeRepositoryChanges(gitService, githubService, baseBranch, currentBranch),
+      selectPRTemplate(githubService)
     ]);
+    console.log(chalk.green('✅ All information fetched successfully'));
 
     // Get diff content for better context
     spinner.start('Analyzing code changes...');
