@@ -5,6 +5,7 @@ import { JiraService } from '../services/atlassian-facade';
 import { AIDescriptionGeneratorService } from '../services/ai-description-generator';
 import { validateConfig } from '../utils/config';
 import { validateGitRepository, validateJiraTicket, extractJiraTicketFromBranch } from '../utils/validation';
+import { container, ServiceKeys } from '../shared/di/container.js';
 
 // Mock dependencies
 jest.mock('@octokit/rest', () => ({
@@ -58,7 +59,9 @@ jest.mock('../utils/spinner.js', () => ({
 const mockGitService = new GitService() as jest.Mocked<GitService>;
 const mockGitHubService = new GitHubService() as jest.Mocked<GitHubService>;
 const mockJiraService = new JiraService() as jest.Mocked<JiraService>;
-const mockAIDescriptionService = new AIDescriptionGeneratorService() as jest.Mocked<AIDescriptionGeneratorService>;
+const mockAIDescriptionService = {
+  generatePRDescription: jest.fn()
+} as any as jest.Mocked<AIDescriptionGeneratorService>;
 const mockValidateConfig = validateConfig as jest.MockedFunction<typeof validateConfig>;
 const mockValidateGitRepository = validateGitRepository as jest.MockedFunction<typeof validateGitRepository>;
 const mockValidateJiraTicket = validateJiraTicket as jest.MockedFunction<typeof validateJiraTicket>;
@@ -79,6 +82,14 @@ const mockExtractJiraTicketFromBranch = extractJiraTicketFromBranch as jest.Mock
 describe('Create PR Command', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Clear and setup DI container with mocks
+    container.clear();
+    container.registerSingleton(ServiceKeys.JIRA_SERVICE, () => mockJiraService);
+    container.registerSingleton(ServiceKeys.GITHUB_SERVICE, () => mockGitHubService);
+    container.registerSingleton(ServiceKeys.GIT_SERVICE, () => mockGitService);
+    container.registerSingleton(ServiceKeys.AI_DESCRIPTION_SERVICE, () => mockAIDescriptionService);
+
     mockValidateConfig.mockReturnValue(true);
     mockValidateGitRepository.mockImplementation(() => { }); // No-op by default
     mockValidateJiraTicket.mockReturnValue(true); // Always return true for valid tickets
@@ -96,6 +107,7 @@ describe('Create PR Command', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+    container.clear();
   });
 
   describe('createPullRequest', () => {

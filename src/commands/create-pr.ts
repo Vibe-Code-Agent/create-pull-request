@@ -9,6 +9,7 @@ import { AIDescriptionGeneratorService } from '../services/ai-description-genera
 import { validateJiraTicket, validateGitRepository, extractJiraTicketFromBranch } from '../utils/validation.js';
 import { CONFIG } from '../constants/index.js';
 import { CreatePROptions, GeneratePRDescriptionParams, GenerateOptions } from '../interface/pull-request.js';
+import { container, ServiceKeys } from '../shared/di/container.js';
 
 // Re-export interfaces for backward compatibility
 export type { CreatePROptions, GeneratePRDescriptionParams, GenerateOptions } from '../interface/pull-request.js';
@@ -237,6 +238,7 @@ async function handleJiraTicketInfo(jiraService: JiraService, jiraTicket: string
 
 /**
  * Analyze repository changes and validate branches
+ * Uses parallel processing for independent operations
  */
 async function analyzeRepositoryChanges(
   gitService: GitService,
@@ -247,13 +249,17 @@ async function analyzeRepositoryChanges(
 ): Promise<{ gitChanges: any; repo: any }> {
   spinner.start('Analyzing repository and changes...');
 
-  const baseExists = await gitService.branchExists(baseBranch);
+  // Parallel: Check branch existence and get current repo (independent operations)
+  const [baseExists, repo] = await Promise.all([
+    gitService.branchExists(baseBranch),
+    githubService.getCurrentRepo()
+  ]);
+
   if (!baseExists) {
     throw new Error(`Base branch '${baseBranch}' does not exist`);
   }
 
   const gitChanges = await gitService.getChanges(baseBranch, true);
-  const repo = await githubService.getCurrentRepo();
   spinner.succeed(`Repository: ${repo.owner}/${repo.repo}, Branch: ${currentBranch}`);
 
   if (gitChanges.totalFiles === 0) {
@@ -615,11 +621,11 @@ export async function createPullRequest(options: CreatePROptions): Promise<void>
   const spinner = createSpinner();
 
   try {
-    // Initialize services
-    const jiraService = new JiraService();
-    const githubService = new GitHubService();
-    const gitService = new GitService();
-    const aiDescriptionService = new AIDescriptionGeneratorService();
+    // Initialize services from DI container
+    const jiraService = container.resolve<JiraService>(ServiceKeys.JIRA_SERVICE);
+    const githubService = container.resolve<GitHubService>(ServiceKeys.GITHUB_SERVICE);
+    const gitService = container.resolve<GitService>(ServiceKeys.GIT_SERVICE);
+    const aiDescriptionService = container.resolve<AIDescriptionGeneratorService>(ServiceKeys.AI_DESCRIPTION_SERVICE);
 
     // Validate repository and check for uncommitted changes
     const shouldProceed = await validateRepositoryAndChanges(gitService);
@@ -631,16 +637,14 @@ export async function createPullRequest(options: CreatePROptions): Promise<void>
     spinner.start('Analyzing repository and changes...');
     const currentBranch = await gitService.getCurrentBranch();
     const jiraTicket = await getJiraTicketId(options, currentBranch);
-
-    // Handle Jira ticket information and Confluence pages
-    const ticketInfo = await handleJiraTicketInfo(jiraService, jiraTicket, spinner);
-
-    // Analyze repository changes and validate branches
     const baseBranch = options.base || CONFIG.DEFAULT_BRANCH;
-    const { gitChanges, repo } = await analyzeRepositoryChanges(gitService, githubService, baseBranch, currentBranch, spinner);
 
-    // Select PR template
-    const selectedTemplate = await selectPRTemplate(githubService, spinner);
+    // Parallel: Fetch Jira ticket, analyze repo, and get templates (independent operations)
+    const [ticketInfo, { gitChanges, repo }, selectedTemplate] = await Promise.all([
+      handleJiraTicketInfo(jiraService, jiraTicket, spinner),
+      analyzeRepositoryChanges(gitService, githubService, baseBranch, currentBranch, spinner),
+      selectPRTemplate(githubService, spinner)
+    ]);
 
     // Get diff content for better context
     spinner.start('Analyzing code changes...');

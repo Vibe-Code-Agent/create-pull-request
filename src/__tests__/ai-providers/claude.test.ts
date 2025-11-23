@@ -76,6 +76,7 @@ describe('ClaudeProvider', () => {
       expect(body).toEqual({
         model: 'claude-3-sonnet',
         max_tokens: LIMITS.MAX_API_TOKENS,
+        stream: false,
         messages: [
           {
             role: 'user',
@@ -139,6 +140,7 @@ describe('ClaudeProvider', () => {
         {
           model: 'claude-3-sonnet',
           max_tokens: LIMITS.MAX_API_TOKENS,
+          stream: false,
           messages: [
             {
               role: 'user',

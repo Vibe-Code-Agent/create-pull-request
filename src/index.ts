@@ -9,12 +9,17 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CONFIG, ENV_KEYS } from './constants/index.js';
+import { setupServices } from './shared/di/service-setup.js';
+import { performanceMonitor } from './shared/performance/metrics.js';
 
 // Get __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 config();
+
+// Setup dependency injection container
+setupServices();
 
 const program = new Command();
 

@@ -5,7 +5,8 @@ export class AppError extends Error {
     message: string,
     public readonly code?: string,
     public readonly statusCode?: number,
-    public readonly isOperational = true
+    public readonly isOperational = true,
+    public readonly originalError?: Error
   ) {
     super(message);
     this.name = 'AppError';
@@ -14,6 +15,56 @@ export class AppError extends Error {
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, AppError);
     }
+  }
+}
+
+/**
+ * Jira API Error with ticket context
+ */
+export class JiraAPIError extends AppError {
+  constructor(message: string, public ticketId?: string, originalError?: Error) {
+    super(message, ERROR_CODES.JIRA_API_ERROR, undefined, true, originalError);
+    this.name = 'JiraAPIError';
+  }
+}
+
+/**
+ * GitHub API Error with repository context
+ */
+export class GitHubAPIError extends AppError {
+  constructor(message: string, public repoInfo?: { owner: string; repo: string }, originalError?: Error) {
+    super(message, ERROR_CODES.GITHUB_API_ERROR, undefined, true, originalError);
+    this.name = 'GitHubAPIError';
+  }
+}
+
+/**
+ * AI Provider Error with provider context
+ */
+export class AIProviderError extends AppError {
+  constructor(message: string, public provider?: string, originalError?: Error) {
+    super(message, 'AI_PROVIDER_ERROR', undefined, true, originalError);
+    this.name = 'AIProviderError';
+  }
+}
+
+/**
+ * Configuration Error
+ */
+export class ConfigurationError extends AppError {
+  constructor(message: string, public missingKeys?: string[]) {
+    super(message, ERROR_CODES.INVALID_CONFIG, undefined, true);
+    this.name = 'ConfigurationError';
+  }
+}
+
+/**
+ * Validation Error
+ */
+export class ValidationError extends AppError {
+  constructor(message: string, public field?: string) {
+    super(message, ERROR_CODES.VALIDATION_ERROR, undefined, true);
+    this.name = 'ValidationError';
   }
 }
 

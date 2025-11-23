@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import { JiraService } from '../../services/atlassian/jira.js';
 import { getConfig } from '../../utils/config.js';
+import { CacheManager } from '../../shared/cache/cache.js';
 
 // Mock dependencies
 jest.mock('axios');
@@ -25,6 +26,9 @@ describe('JiraService', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         (axios.isAxiosError as any).mockReturnValue(false);
+
+        // Clear all caches before each test
+        CacheManager.getInstance().clearAll();
 
         mockAxiosInstance = {
             get: jest.fn(),

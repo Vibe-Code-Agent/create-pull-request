@@ -4,7 +4,11 @@ export declare class ClaudeProvider extends BaseAIProvider {
     getDefaultModel(): string;
     getHeaders(): Record<string, string>;
     getApiUrl(): string;
-    buildRequestBody(prompt: string): any;
+    buildRequestBody(prompt: string, stream?: boolean): any;
     extractContentFromResponse(response: any): string;
+    /**
+     * Generate content with true streaming support for Claude
+     */
+    generateContentStream(prompt: string, onChunk?: (chunk: string) => void): Promise<any>;
 }
 //# sourceMappingURL=claude.d.ts.map

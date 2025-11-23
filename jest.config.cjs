@@ -1,3 +1,9 @@
+// Set NODE_OPTIONS environment variable to work around Node.js 25+ security restrictions
+const os = require('os');
+const path = require('path');
+const tempFile = path.join(os.tmpdir(), 'jest-localstorage-' + Date.now());
+process.env.NODE_OPTIONS = (process.env.NODE_OPTIONS || '') + ` --localstorage-file=${tempFile}`;
+
 module.exports = {
   preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',

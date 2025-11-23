@@ -1,5 +1,6 @@
 import { GitHubService } from '../services/github';
 import { getConfig } from '../utils/config';
+import { CacheManager } from '../shared/cache/cache.js';
 
 // Mock dependencies
 jest.mock('@octokit/rest', () => ({
@@ -50,6 +51,9 @@ describe('GitHubService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Clear all caches before each test
+    CacheManager.getInstance().clearAll();
 
     // Create a comprehensive mock for Octokit
     mockOctokit = {
