@@ -85,6 +85,35 @@ describe('AIProviderLazyLoader', () => {
             expect(loader.isLoaded(AI_PROVIDERS.OPENAI)).toBe(true);
             expect(loader.isLoaded(AI_PROVIDERS.GEMINI)).toBe(true);
         });
+
+        it('should create separate instances for same provider with different credentials', async () => {
+            const provider1 = await loader.loadProvider(AI_PROVIDERS.CLAUDE, 'key1', 'model1');
+            const provider2 = await loader.loadProvider(AI_PROVIDERS.CLAUDE, 'key2', 'model2');
+            const provider3 = await loader.loadProvider(AI_PROVIDERS.CLAUDE, 'key1', 'model2');
+
+            // Different instances for different credentials/models
+            expect(provider1).not.toBe(provider2);
+            expect(provider1).not.toBe(provider3);
+            expect(provider2).not.toBe(provider3);
+
+            // All are loaded and can be retrieved
+            expect(loader.isLoaded(AI_PROVIDERS.CLAUDE, 'key1', 'model1')).toBe(true);
+            expect(loader.isLoaded(AI_PROVIDERS.CLAUDE, 'key2', 'model2')).toBe(true);
+            expect(loader.isLoaded(AI_PROVIDERS.CLAUDE, 'key1', 'model2')).toBe(true);
+
+            expect(loader.getLoaded(AI_PROVIDERS.CLAUDE, 'key1', 'model1')).toBe(provider1);
+            expect(loader.getLoaded(AI_PROVIDERS.CLAUDE, 'key2', 'model2')).toBe(provider2);
+            expect(loader.getLoaded(AI_PROVIDERS.CLAUDE, 'key1', 'model2')).toBe(provider3);
+        });
+
+        it('should cache same provider with same credentials and model', async () => {
+            const provider1 = await loader.loadProvider(AI_PROVIDERS.CLAUDE, 'test-key', 'test-model');
+            const provider2 = await loader.loadProvider(AI_PROVIDERS.CLAUDE, 'test-key', 'test-model');
+
+            // Same instance for same credentials and model
+            expect(provider1).toBe(provider2);
+            expect(loader.isLoaded(AI_PROVIDERS.CLAUDE, 'test-key', 'test-model')).toBe(true);
+        });
     });
 
     describe('isLoaded', () => {

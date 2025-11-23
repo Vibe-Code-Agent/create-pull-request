@@ -31,7 +31,8 @@ describe('PerformanceMonitor', () => {
 
             expect(metrics).toHaveLength(1);
             expect(metrics[0].name).toBe('test-operation');
-            expect(metrics[0].duration).toBeGreaterThanOrEqual(50);
+            // setTimeout can execute slightly earlier than specified (typically 0-5ms)
+            expect(metrics[0].duration).toBeGreaterThanOrEqual(45);
         });
 
         it('should record metrics with metadata', async () => {
@@ -56,7 +57,8 @@ describe('PerformanceMonitor', () => {
 
             expect(metrics).toHaveLength(1);
             expect(metrics[0].name).toBe('test-operation');
-            expect(metrics[0].duration).toBeGreaterThanOrEqual(10);
+            // setTimeout can execute slightly earlier than specified (typically 0-5ms)
+            expect(metrics[0].duration).toBeGreaterThanOrEqual(5);
         });
     });
 

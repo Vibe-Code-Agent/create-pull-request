@@ -60,12 +60,11 @@ export abstract class BaseAIProvider {
     const response = await this.generateContent(prompt);
 
     if (onChunk) {
-      // Simulate streaming by splitting the content
+      // Immediately deliver the content in chunks without artificial delay
+      // The content is already generated, so adding delays only degrades performance
       const words = response.content.split(' ');
       for (const word of words) {
         onChunk(word + ' ');
-        // Small delay to simulate streaming
-        await new Promise(resolve => setTimeout(resolve, 10));
       }
     }
 

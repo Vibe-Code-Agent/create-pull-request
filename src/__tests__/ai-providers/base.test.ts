@@ -234,4 +234,61 @@ describe('BaseAIProvider', () => {
       expect(content).toBe('test');
     });
   });
+
+  describe('generateContentStream', () => {
+    it('should fall back to non-streaming and call onChunk without delay', async () => {
+      mockAxiosInstance.post.mockResolvedValue({
+        status: 200,
+        data: { content: 'Hello world test' }
+      });
+
+      const chunks: string[] = [];
+      const startTime = Date.now();
+
+      const response = await provider.generateContentStream('test prompt', (chunk) => {
+        chunks.push(chunk);
+      });
+
+      const duration = Date.now() - startTime;
+
+      expect(response.content).toBe('Hello world test');
+      expect(chunks).toEqual(['Hello ', 'world ', 'test ']);
+      // Should complete quickly without artificial delays (< 100ms for 3 words)
+      expect(duration).toBeLessThan(100);
+    });
+
+    it('should work without onChunk callback', async () => {
+      mockAxiosInstance.post.mockResolvedValue({
+        status: 200,
+        data: { content: 'test response' }
+      });
+
+      const response = await provider.generateContentStream('test prompt');
+
+      expect(response.content).toBe('test response');
+    });
+
+    it('should handle large content efficiently', async () => {
+      // Generate content with many words
+      const words = Array(1000).fill('word').join(' ');
+      mockAxiosInstance.post.mockResolvedValue({
+        status: 200,
+        data: { content: words }
+      });
+
+      const chunks: string[] = [];
+      const startTime = Date.now();
+
+      await provider.generateContentStream('test prompt', (chunk) => {
+        chunks.push(chunk);
+      });
+
+      const duration = Date.now() - startTime;
+
+      expect(chunks).toHaveLength(1000);
+      // With old delay: 1000 words * 10ms = 10 seconds
+      // Without delay: should complete in < 1 second
+      expect(duration).toBeLessThan(1000);
+    });
+  });
 });

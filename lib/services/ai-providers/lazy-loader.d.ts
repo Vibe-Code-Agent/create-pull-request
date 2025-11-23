@@ -7,6 +7,10 @@ export declare class AIProviderLazyLoader {
     private loadedProviders;
     private loadingPromises;
     /**
+     * Generate a cache key that includes provider, apiKey, and model
+     */
+    private getCacheKey;
+    /**
      * Lazily load and instantiate an AI provider
      */
     loadProvider(provider: AIProvider, apiKey: string, model?: string): Promise<BaseAIProvider>;
@@ -17,11 +21,11 @@ export declare class AIProviderLazyLoader {
     /**
      * Check if a provider has been loaded
      */
-    isLoaded(provider: AIProvider): boolean;
+    isLoaded(provider: AIProvider, apiKey?: string, model?: string): boolean;
     /**
      * Get a loaded provider without triggering a load
      */
-    getLoaded(provider: AIProvider): BaseAIProvider | undefined;
+    getLoaded(provider: AIProvider, apiKey?: string, model?: string): BaseAIProvider | undefined;
     /**
      * Clear all loaded providers (useful for testing)
      */
