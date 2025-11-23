@@ -48,19 +48,18 @@ jobs:
           registry-url: "https://registry.npmjs.org"
           cache: "npm"
 
-      - name: 📦 Cache build and publish artifacts
+      - name: 📦 Cache build and dependencies
         uses: actions/cache@v4
         with:
           path: |
+            node_modules
             lib
             *.tsbuildinfo
             ~/.npm
-            node_modules/.cache
-            dist
-          key: publish-${{ runner.os }}-${{ hashFiles('src/**/*', 'tsconfig.json', 'package-lock.json', 'package.json') }}
+          key: publish-${{ runner.os }}-${{ hashFiles('package-lock.json', 'src/**/*', 'tsconfig.json') }}
           restore-keys: |
             publish-${{ runner.os }}-
-            build-${{ runner.os }}-
+            build-${{ runner.os }}-node20-
 
       - name: 📦 Install dependencies
         run: npm ci
@@ -96,14 +95,16 @@ jobs:
       - name: 🔍 Verify package integrity
         run: npm audit signatures
 
-      - name: 🧪 Run tests
-        run: npm test
-
-      - name: 📝 Run linting
-        run: npm run lint
-
-      - name: 🏗️ Build project
-        run: npm run build
+      - name: 🧪 Run tests & lint & build
+        run: |
+          echo "🧪 Running tests..."
+          npm test
+          
+          echo "📝 Running linter..."
+          npm run lint
+          
+          echo "🏗️ Building project..."
+          npm run build
 
       - name: 🔍 Validate build artifacts
         run: |
@@ -220,8 +221,8 @@ jobs:
           echo "⏳ Polling NPM registry for package availability..."
           echo "📦 Package: $PACKAGE_NAME@$PACKAGE_VERSION"
 
-          # Polling configuration
-          MAX_ATTEMPTS=20
+          # Reduced polling configuration for faster feedback
+          MAX_ATTEMPTS=12  # 1 minute max (12 * 5s)
           POLL_INTERVAL=5
           ATTEMPT=0
           PACKAGE_AVAILABLE=false
@@ -256,9 +257,9 @@ jobs:
             echo "🔗 NPM: https://www.npmjs.com/package/$PACKAGE_NAME/v/$PACKAGE_VERSION"
           else
             echo ""
-            echo "⚠️ Package not detected after $((MAX_ATTEMPTS * POLL_INTERVAL)) seconds"
+            echo "⚠️ Package not detected after $((MAX_ATTEMPTS * POLL_INTERVAL)) seconds (1 minute)"
             echo "📋 This doesn't mean publishing failed - NPM sync can take longer"
-            echo "🔍 Manually verify: npm view $PACKAGE_NAME@$PACKAGE_VERSION"
+            echo "🔍 Manually verify in a few minutes: npm view $PACKAGE_NAME@$PACKAGE_VERSION"
             echo "🔗 NPM: https://www.npmjs.com/package/$PACKAGE_NAME"
           fi
 
