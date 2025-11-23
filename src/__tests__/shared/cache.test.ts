@@ -7,6 +7,29 @@ describe('Cache', () => {
         cache = new Cache<string>({ ttl: 1000, maxSize: 5 });
     });
 
+    describe('constructor', () => {
+        it('should accept TTL=0 as infinite cache', () => {
+            const infiniteCache = new Cache<string>({ ttl: 0 });
+            const stats = infiniteCache.getStats();
+
+            expect(stats.defaultTTL).toBe(0);
+        });
+
+        it('should use default TTL when not provided', () => {
+            const defaultCache = new Cache<string>();
+            const stats = defaultCache.getStats();
+
+            expect(stats.defaultTTL).toBe(5 * 60 * 1000);
+        });
+
+        it('should accept maxSize=0', () => {
+            const noLimitCache = new Cache<string>({ maxSize: 0 });
+            const stats = noLimitCache.getStats();
+
+            expect(stats.maxSize).toBe(0);
+        });
+    });
+
     describe('get and set', () => {
         it('should store and retrieve values', () => {
             cache.set('key1', 'value1');
@@ -70,6 +93,33 @@ describe('Cache', () => {
             cache.get('key1');
 
             expect(cache.size()).toBe(0);
+        });
+
+        it('should never expire values with TTL=0', async () => {
+            cache.set('key1', 'value1', 0);
+            cache.set('key2', 'value2', 0);
+
+            // Wait longer than normal TTL
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            // Values with TTL=0 should never expire
+            expect(cache.get('key1')).toBe('value1');
+            expect(cache.get('key2')).toBe('value2');
+            expect(cache.size()).toBe(2);
+        });
+
+        it('should not cleanup entries with TTL=0', async () => {
+            cache.set('key1', 'value1', 0);
+            cache.set('key2', 'value2', 50);
+
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            const removed = cache.cleanup();
+
+            // Only key2 should be removed, key1 with TTL=0 stays
+            expect(removed).toBe(1);
+            expect(cache.get('key1')).toBe('value1');
+            expect(cache.get('key2')).toBeUndefined();
         });
     });
 

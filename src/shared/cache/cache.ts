@@ -19,8 +19,8 @@ export class Cache<T = any> {
     private maxSize: number;
 
     constructor(options: CacheOptions = {}) {
-        this.defaultTTL = options.ttl || 5 * 60 * 1000; // Default 5 minutes
-        this.maxSize = options.maxSize || 100;
+        this.defaultTTL = options.ttl !== undefined ? options.ttl : 5 * 60 * 1000; // Default 5 minutes, 0 = infinite
+        this.maxSize = options.maxSize !== undefined ? options.maxSize : 100;
     }
 
     /**
@@ -33,8 +33,8 @@ export class Cache<T = any> {
             return undefined;
         }
 
-        // Check if expired
-        if (Date.now() - entry.timestamp > entry.ttl) {
+        // Check if expired (TTL=0 means never expires)
+        if (entry.ttl > 0 && Date.now() - entry.timestamp > entry.ttl) {
             this.cache.delete(key);
             return undefined;
         }
@@ -58,7 +58,7 @@ export class Cache<T = any> {
         this.cache.set(key, {
             data: value,
             timestamp: Date.now(),
-            ttl: ttl || this.defaultTTL
+            ttl: ttl !== undefined ? ttl : this.defaultTTL
         });
     }
 
@@ -122,7 +122,8 @@ export class Cache<T = any> {
         let removed = 0;
 
         for (const [key, entry] of this.cache.entries()) {
-            if (now - entry.timestamp > entry.ttl) {
+            // TTL=0 means never expires, so skip cleanup
+            if (entry.ttl > 0 && now - entry.timestamp > entry.ttl) {
                 this.cache.delete(key);
                 removed++;
             }

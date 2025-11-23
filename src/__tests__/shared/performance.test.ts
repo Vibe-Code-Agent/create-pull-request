@@ -296,7 +296,8 @@ describe('@Measure decorator', () => {
 
         expect(metrics).toHaveLength(1);
         expect(metrics[0].name).toBe('custom-name');
-        expect(metrics[0].duration).toBeGreaterThanOrEqual(50);
+        // setTimeout can execute slightly earlier than specified (typically 0-5ms)
+        expect(metrics[0].duration).toBeGreaterThanOrEqual(45);
     });
 
     it('should measure method execution time with default name', async () => {
@@ -308,7 +309,8 @@ describe('@Measure decorator', () => {
 
         expect(metrics).toHaveLength(1);
         expect(metrics[0].name).toBe('TestService.operation2');
-        expect(metrics[0].duration).toBeGreaterThanOrEqual(30);
+        // setTimeout can execute slightly earlier than specified (typically 0-5ms)
+        expect(metrics[0].duration).toBeGreaterThanOrEqual(25);
     });
 
     it('should track multiple method calls', async () => {

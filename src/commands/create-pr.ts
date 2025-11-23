@@ -627,13 +627,17 @@ export async function createPullRequest(options: CreatePROptions): Promise<void>
     const baseBranch = options.base || CONFIG.DEFAULT_BRANCH;
     spinner.stop();
 
-    // Parallel: Fetch Jira ticket, analyze repo, and get templates (independent operations)
-    console.log(chalk.blue('\n🔄 Fetching information in parallel...'));
-    const [ticketInfo, { gitChanges, repo }, selectedTemplate] = await Promise.all([
-      handleJiraTicketInfo(jiraService, jiraTicket),
-      analyzeRepositoryChanges(gitService, githubService, baseBranch, currentBranch),
-      selectPRTemplate(githubService)
-    ]);
+    // Sequential: Handle operations that may prompt user (avoid inquirer race conditions)
+    // First, analyze repository (no user prompts)
+    console.log(chalk.blue('\n🔄 Analyzing repository...'));
+    const { gitChanges, repo } = await analyzeRepositoryChanges(gitService, githubService, baseBranch, currentBranch);
+
+    // Second, handle Jira ticket info (may prompt for Confluence)
+    const ticketInfo = await handleJiraTicketInfo(jiraService, jiraTicket);
+
+    // Third, select PR template (may prompt for template selection)
+    const selectedTemplate = await selectPRTemplate(githubService);
+
     console.log(chalk.green('✅ All information fetched successfully'));
 
     // Get diff content for better context
