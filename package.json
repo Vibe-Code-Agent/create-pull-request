@@ -1,6 +1,6 @@
 {
   "name": "publish-pull-request",
-  "version": "3.0.20",
+  "version": "3.0.21",
   "description": "CLI tool to automatically generate pull request descriptions based on Jira tickets and file changes using GitHub Copilot API",
   "type": "module",
   "main": "lib/index.js",
@@ -65,5 +65,6 @@
   },
   "engines": {
     "node": ">=18.0.0"
-  }
+  },
+  "funding": "https://github.com/sponsors/doraemon0905"
 }
