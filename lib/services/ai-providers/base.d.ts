@@ -13,6 +13,13 @@ export declare abstract class BaseAIProvider {
     abstract buildRequestBody(prompt: string): any;
     abstract extractContentFromResponse(response: any): string;
     generateContent(prompt: string): Promise<AIResponse>;
+    /**
+     * Generate content with streaming support
+     * @param prompt The prompt to send to the AI
+     * @param onChunk Callback function for each streamed chunk
+     * @returns Complete AI response when streaming is done
+     */
+    generateContentStream(prompt: string, onChunk?: (chunk: string) => void): Promise<AIResponse>;
     protected handleApiError(error: any): never;
 }
 //# sourceMappingURL=base.d.ts.map

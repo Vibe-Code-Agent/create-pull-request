@@ -2,6 +2,8 @@ import { Octokit } from '@octokit/rest';
 import { simpleGit, SimpleGit } from 'simple-git';
 import { getConfig } from '../utils/config.js';
 import { FILE_PATHS, REGEX_PATTERNS, HEADERS, HTTP_STATUS, LIMITS, CONFIG, CONFIG_SECTIONS } from '../constants/index.js';
+import { Cached } from '../shared/cache/cache.js';
+import { Measure } from '../shared/performance/metrics.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { GitHubRepo, PullRequest, PullRequestTemplate } from '../interface/github-api.js';
@@ -28,6 +30,8 @@ export class GitHubService {
     this.git = simpleGit();
   }
 
+  @Measure('GitHubService.getCurrentRepo')
+  @Cached('github-repo', { ttl: 10 * 60 * 1000 }) // Cache for 10 minutes
   async getCurrentRepo(): Promise<GitHubRepo> {
     const remotes = await this.git.getRemotes(true);
     const originRemote = remotes.find(remote => remote.name === CONFIG.DEFAULT_REMOTE);
@@ -49,6 +53,8 @@ export class GitHubService {
     };
   }
 
+  @Measure('GitHubService.getPullRequestTemplates')
+  @Cached('pr-templates', { ttl: 0 }) // Cache until process ends (TTL=0 means infinite)
   async getPullRequestTemplates(): Promise<PullRequestTemplate[]> {
     const templates: PullRequestTemplate[] = [];
 

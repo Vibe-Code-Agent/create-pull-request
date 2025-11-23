@@ -9,10 +9,6 @@ jest.mock('../services/ai-providers/manager.js');
 jest.mock('../services/ai-providers/prompt-builder.js');
 jest.mock('../services/ai-providers/response-parser.js');
 
-const MockedAIProviderManager = AIProviderManager as jest.MockedClass<typeof AIProviderManager>;
-const MockedPromptBuilder = PromptBuilder as jest.MockedClass<typeof PromptBuilder>;
-const MockedResponseParser = ResponseParser as jest.MockedClass<typeof ResponseParser>;
-
 describe('AIDescriptionGeneratorService', () => {
   let service: AIDescriptionGeneratorService;
   let mockProviderManager: jest.Mocked<AIProviderManager>;
@@ -61,7 +57,8 @@ describe('AIDescriptionGeneratorService', () => {
     // Create mock instances
     mockProviderManager = {
       selectProvider: jest.fn().mockResolvedValue(AI_PROVIDERS.CLAUDE),
-      generateContent: jest.fn().mockResolvedValue('Generated content')
+      generateContent: jest.fn().mockResolvedValue('Generated content'),
+      generateContentStream: jest.fn().mockResolvedValue('Generated content')
     } as any;
 
     mockPromptBuilder = {
@@ -76,20 +73,12 @@ describe('AIDescriptionGeneratorService', () => {
       })
     } as any;
 
-    // Mock the constructors
-    MockedAIProviderManager.mockImplementation(() => mockProviderManager);
-    MockedPromptBuilder.mockImplementation(() => mockPromptBuilder);
-    MockedResponseParser.mockImplementation(() => mockResponseParser);
-
-    service = new AIDescriptionGeneratorService();
-  });
-
-  describe('constructor', () => {
-    it('should initialize with modular classes', () => {
-      expect(MockedAIProviderManager).toHaveBeenCalled();
-      expect(MockedPromptBuilder).toHaveBeenCalled();
-      expect(MockedResponseParser).toHaveBeenCalled();
-    });
+    // Pass dependencies directly to constructor
+    service = new AIDescriptionGeneratorService(
+      mockProviderManager,
+      mockPromptBuilder,
+      mockResponseParser
+    );
   });
 
   describe('generatePRDescription', () => {
@@ -98,7 +87,7 @@ describe('AIDescriptionGeneratorService', () => {
 
       expect(mockProviderManager.selectProvider).toHaveBeenCalledTimes(1);
       expect(mockPromptBuilder.buildPrompt).toHaveBeenCalledWith(mockOptions);
-      expect(mockProviderManager.generateContent).toHaveBeenCalledTimes(1);
+      expect(mockProviderManager.generateContentStream).toHaveBeenCalledTimes(1);
       expect(mockResponseParser.parseAIResponse).toHaveBeenCalledWith({ content: 'Generated content' }, AI_PROVIDERS.CLAUDE);
 
       expect(result).toEqual({

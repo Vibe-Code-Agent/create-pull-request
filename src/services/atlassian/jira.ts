@@ -1,6 +1,8 @@
 import { BaseAtlassianService } from './base.js';
 import { API_URLS, JIRA_ENDPOINTS, CONFIG_SECTIONS } from '../../constants/index.js';
-
+import { Cached } from '../../shared/cache/cache.js';
+import { Measure } from '../../shared/performance/metrics.js';
+import { Retry, isRetryableError } from '../../shared/utils/retry.js';
 import { JiraTicket } from '../../interface/jira-confluence.js';
 
 export class JiraService extends BaseAtlassianService {
@@ -11,6 +13,8 @@ export class JiraService extends BaseAtlassianService {
         this.client.defaults.baseURL = `${this.config.baseUrl}${API_URLS.JIRA_API_VERSION}`;
     }
 
+    @Measure('JiraService.getTicket')
+    @Cached('jira-tickets', { ttl: 5 * 60 * 1000, keyGenerator: (ticketKey: string) => ticketKey })
     async getTicket(ticketKey: string): Promise<JiraTicket> {
         const response = await this.client.get(`${JIRA_ENDPOINTS.ISSUE}${ticketKey}`, {
             params: {

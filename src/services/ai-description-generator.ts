@@ -7,25 +7,25 @@ import { GenerateDescriptionOptions, GeneratedPRContent } from '../interface/ai-
 export type { GenerateDescriptionOptions, GeneratedPRContent } from '../interface/ai-provider.js';
 
 export class AIDescriptionGeneratorService {
-  private readonly providerManager: AIProviderManager;
-  private readonly promptBuilder: PromptBuilder;
-  private readonly responseParser: ResponseParser;
+  constructor(
+    private readonly providerManager: AIProviderManager,
+    private readonly promptBuilder: PromptBuilder,
+    private readonly responseParser: ResponseParser
+  ) { }
 
-  constructor() {
-    this.providerManager = new AIProviderManager();
-    this.promptBuilder = new PromptBuilder();
-    this.responseParser = new ResponseParser();
-  }
-
-  async generatePRDescription(options: GenerateDescriptionOptions): Promise<GeneratedPRContent> {
+  async generatePRDescription(
+    options: GenerateDescriptionOptions,
+    onProgress?: (chunk: string) => void
+  ): Promise<GeneratedPRContent> {
     // Select AI provider
     const selectedProvider = await this.providerManager.selectProvider();
 
     // Build the prompt using the new PromptBuilder
     const prompt = this.promptBuilder.buildPrompt(options);
 
-    // Generate content using the provider manager
-    const content = await this.providerManager.generateContent(prompt, selectedProvider);
+    // Generate content using the provider manager (with optional streaming)
+    const content = await this.providerManager.generateContentStream(prompt, selectedProvider, onProgress);
+
     // Parse the response using the new ResponseParser
     const result = this.responseParser.parseAIResponse({ content }, selectedProvider);
 

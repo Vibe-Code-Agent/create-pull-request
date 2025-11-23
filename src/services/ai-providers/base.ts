@@ -45,6 +45,32 @@ export abstract class BaseAIProvider {
     }
   }
 
+  /**
+   * Generate content with streaming support
+   * @param prompt The prompt to send to the AI
+   * @param onChunk Callback function for each streamed chunk
+   * @returns Complete AI response when streaming is done
+   */
+  async generateContentStream(
+    prompt: string,
+    onChunk?: (chunk: string) => void
+  ): Promise<AIResponse> {
+    // Default implementation: fall back to non-streaming
+    // Providers can override this for true streaming support
+    const response = await this.generateContent(prompt);
+
+    if (onChunk) {
+      // Immediately deliver the content in chunks without artificial delay
+      // The content is already generated, so adding delays only degrades performance
+      const words = response.content.split(' ');
+      for (const word of words) {
+        onChunk(word + ' ');
+      }
+    }
+
+    return response;
+  }
+
   protected handleApiError(error: any): never {
     if (error.response) {
       const status = error.response.status;

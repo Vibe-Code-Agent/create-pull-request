@@ -9,6 +9,11 @@ export interface AIResponse {
     content: string;
     provider: AIProvider;
 }
+export interface AIStreamChunk {
+    content: string;
+    done: boolean;
+    provider: AIProvider;
+}
 export interface GeneratedPRContent {
     title: string;
     body: string;

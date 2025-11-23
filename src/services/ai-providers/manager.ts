@@ -2,20 +2,27 @@ import inquirer from 'inquirer';
 import { getConfig } from '../../utils/config.js';
 import { BaseAIProvider, AIProvider } from './base.js';
 import { AI_PROVIDERS, AI_PROVIDER_NAMES, ENV_KEYS, CONFIG_SECTIONS } from '../../constants/index.js';
-import { ClaudeProvider } from './claude.js';
-import { OpenAIProvider } from './openai.js';
-import { GeminiProvider } from './gemini.js';
-import { CopilotProvider } from './copilot.js';
+import { AIProviderLazyLoader } from './lazy-loader.js';
+
+interface ProviderConfig {
+  provider: AIProvider;
+  apiKey: string;
+  model?: string;
+}
 
 export class AIProviderManager {
-  private readonly providers: Map<AIProvider, BaseAIProvider> = new Map();
+  private readonly lazyLoader: AIProviderLazyLoader = new AIProviderLazyLoader();
+  private readonly availableProviders: ProviderConfig[] = [];
   private selectedProvider: AIProvider | null = null;
 
   constructor() {
-    this.initializeProviders();
+    this.discoverAvailableProviders();
   }
 
-  private initializeProviders(): void {
+  /**
+   * Discover which providers are configured without loading them
+   */
+  private discoverAvailableProviders(): void {
     const githubConfig = this.getConfigSafely(CONFIG_SECTIONS.GITHUB);
     const copilotConfig = this.getConfigSafely(CONFIG_SECTIONS.COPILOT);
     const aiProvidersConfig = this.getConfigSafely(CONFIG_SECTIONS.AI_PROVIDERS);
@@ -26,10 +33,11 @@ export class AIProviderManager {
       process.env.CLAUDE_API_KEY;
 
     if (claudeKey) {
-      this.providers.set(AI_PROVIDERS.CLAUDE, new ClaudeProvider(
-        claudeKey,
-        aiProvidersConfig?.claude?.model
-      ));
+      this.availableProviders.push({
+        provider: AI_PROVIDERS.CLAUDE,
+        apiKey: claudeKey,
+        model: aiProvidersConfig?.claude?.model
+      });
     }
 
     // OpenAI client
@@ -37,10 +45,11 @@ export class AIProviderManager {
       process.env[ENV_KEYS.OPENAI_API_KEY];
 
     if (openaiKey) {
-      this.providers.set(AI_PROVIDERS.OPENAI, new OpenAIProvider(
-        openaiKey,
-        aiProvidersConfig?.openai?.model
-      ));
+      this.availableProviders.push({
+        provider: AI_PROVIDERS.OPENAI,
+        apiKey: openaiKey,
+        model: aiProvidersConfig?.openai?.model
+      });
     }
 
     // Gemini client
@@ -49,17 +58,21 @@ export class AIProviderManager {
       process.env.GOOGLE_API_KEY;
 
     if (geminiKey) {
-      this.providers.set(AI_PROVIDERS.GEMINI, new GeminiProvider(
-        geminiKey,
-        aiProvidersConfig?.gemini?.model
-      ));
+      this.availableProviders.push({
+        provider: AI_PROVIDERS.GEMINI,
+        apiKey: geminiKey,
+        model: aiProvidersConfig?.gemini?.model
+      });
     }
 
     // GitHub Copilot client
     const copilotKey = copilotConfig?.apiToken || githubConfig?.token;
 
     if (copilotKey) {
-      this.providers.set(AI_PROVIDERS.COPILOT, new CopilotProvider(copilotKey));
+      this.availableProviders.push({
+        provider: AI_PROVIDERS.COPILOT,
+        apiKey: copilotKey
+      });
     }
   }
 
@@ -76,15 +89,13 @@ export class AIProviderManager {
       return this.selectedProvider;
     }
 
-    const availableProviders = Array.from(this.providers.keys());
-
-    if (availableProviders.length === 0) {
+    if (this.availableProviders.length === 0) {
       throw new Error(`No AI providers configured. Please set ${ENV_KEYS.ANTHROPIC_API_KEY}, ${ENV_KEYS.OPENAI_API_KEY}, ${ENV_KEYS.GEMINI_API_KEY}, or configure GitHub Copilot.`);
     }
 
     // If only one provider available, use it
-    if (availableProviders.length === 1) {
-      this.selectedProvider = availableProviders[0];
+    if (this.availableProviders.length === 1) {
+      this.selectedProvider = this.availableProviders[0].provider;
       return this.selectedProvider;
     }
 
@@ -94,35 +105,74 @@ export class AIProviderManager {
         type: 'list',
         name: 'selectedProvider',
         message: 'Multiple AI providers available. Please select one:',
-        choices: availableProviders.map(provider => ({
-          name: this.getProviderDisplayName(provider),
-          value: provider
+        choices: this.availableProviders.map(config => ({
+          name: this.getProviderDisplayName(config.provider),
+          value: config.provider
         }))
       }
     ]);
 
-    this.selectedProvider = selectedProvider;
-    return this.selectedProvider!;
+    this.selectedProvider = selectedProvider as AIProvider;
+    return this.selectedProvider;
   }
 
   async generateContent(prompt: string, provider?: AIProvider): Promise<string> {
     const selectedProvider = provider || await this.selectProvider();
-    const aiProvider = this.providers.get(selectedProvider);
 
-    if (!aiProvider) {
+    // Find the provider config
+    const providerConfig = this.availableProviders.find(p => p.provider === selectedProvider);
+    if (!providerConfig) {
       throw new Error(`Provider ${selectedProvider} not available`);
     }
+
+    // Lazy load the provider only when needed
+    const aiProvider = await this.lazyLoader.loadProvider(
+      providerConfig.provider,
+      providerConfig.apiKey,
+      providerConfig.model
+    );
 
     const response = await aiProvider.generateContent(prompt);
     return response.content;
   }
 
+  /**
+   * Generate content with streaming support
+   * @param prompt The prompt to send to the AI
+   * @param provider Optional specific provider to use
+   * @param onChunk Optional callback for streaming chunks
+   * @returns Complete content when generation is done
+   */
+  async generateContentStream(
+    prompt: string,
+    provider?: AIProvider,
+    onChunk?: (chunk: string) => void
+  ): Promise<string> {
+    const selectedProvider = provider || await this.selectProvider();
+
+    // Find the provider config
+    const providerConfig = this.availableProviders.find(p => p.provider === selectedProvider);
+    if (!providerConfig) {
+      throw new Error(`Provider ${selectedProvider} not available`);
+    }
+
+    // Lazy load the provider only when needed
+    const aiProvider = await this.lazyLoader.loadProvider(
+      providerConfig.provider,
+      providerConfig.apiKey,
+      providerConfig.model
+    );
+
+    const response = await aiProvider.generateContentStream(prompt, onChunk);
+    return response.content;
+  }
+
   getAvailableProviders(): AIProvider[] {
-    return Array.from(this.providers.keys());
+    return this.availableProviders.map(config => config.provider);
   }
 
   hasProvider(provider: AIProvider): boolean {
-    return this.providers.has(provider);
+    return this.availableProviders.some(config => config.provider === provider);
   }
 
   private getProviderDisplayName(provider: AIProvider): string {

@@ -1,3 +1,25 @@
+// Conditionally set NODE_OPTIONS for Node.js 25+ which requires --localstorage-file
+// Node.js versions < 25 don't have this requirement and will fail with this flag
+const nodeVersion = parseInt(process.version.slice(1).split('.')[0]);
+
+if (nodeVersion >= 25) {
+  const os = require('os');
+  const path = require('path');
+  const fs = require('fs');
+
+  // Only set if not already configured to avoid worker process issues
+  if (!process.env.NODE_OPTIONS || !process.env.NODE_OPTIONS.includes('--localstorage-file')) {
+    // Create a stable temp directory for Jest
+    const tempDir = path.join(os.tmpdir(), 'jest-localstorage');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    const tempFile = path.join(tempDir, `storage-${process.pid}`);
+    process.env.NODE_OPTIONS = (process.env.NODE_OPTIONS || '') + ` --localstorage-file=${tempFile}`;
+  }
+}
+
 module.exports = {
   preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
