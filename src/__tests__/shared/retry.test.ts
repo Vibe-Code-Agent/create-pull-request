@@ -3,6 +3,11 @@ import { retry, isRetryableError, Retry } from '../../shared/utils/retry.js';
 describe('retry', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+        jest.useRealTimers();
     });
 
     describe('successful operations', () => {
@@ -20,11 +25,13 @@ describe('retry', () => {
                 .mockRejectedValueOnce(new Error('Fail 1'))
                 .mockResolvedValue('success');
 
-            const result = await retry(operation, { initialDelay: 10 });
+            const promise = retry(operation, { initialDelay: 10 });
+            await jest.runAllTimersAsync();
+            const result = await promise;
 
             expect(result).toBe('success');
             expect(operation).toHaveBeenCalledTimes(2);
-        }, 10000);
+        });
     });
 
     describe('failed operations', () => {
@@ -32,18 +39,24 @@ describe('retry', () => {
             const error = new Error('Persistent error');
             const operation = jest.fn().mockRejectedValue(error);
 
-            await expect(retry(operation, { maxAttempts: 3, initialDelay: 10 })).rejects.toThrow('Persistent error');
+            const promise = retry(operation, { maxAttempts: 3, initialDelay: 10 });
+            promise.catch(() => { }); // Prevent unhandled rejection
+            await jest.runAllTimersAsync();
+            await expect(promise).rejects.toThrow('Persistent error');
 
             expect(operation).toHaveBeenCalledTimes(3);
-        }, 10000);
+        });
 
         it('should use default max attempts', async () => {
             const operation = jest.fn().mockRejectedValue(new Error('Error'));
 
-            await expect(retry(operation, { initialDelay: 10 })).rejects.toThrow();
+            const promise = retry(operation, { initialDelay: 10 });
+            promise.catch(() => { }); // Prevent unhandled rejection
+            await jest.runAllTimersAsync();
+            await expect(promise).rejects.toThrow();
 
             expect(operation).toHaveBeenCalledTimes(3); // Default maxAttempts
-        }, 10000);
+        });
     });
 
     describe('exponential backoff', () => {
@@ -51,44 +64,50 @@ describe('retry', () => {
             const operation = jest.fn().mockRejectedValue(new Error('Error'));
             const onRetry = jest.fn();
 
-            await expect(retry(operation, {
+            const promise = retry(operation, {
                 maxAttempts: 3,
                 initialDelay: 10,
                 backoffMultiplier: 2,
                 onRetry
-            })).rejects.toThrow();
+            });
+            promise.catch(() => { }); // Prevent unhandled rejection
+            await jest.runAllTimersAsync();
+            await expect(promise).rejects.toThrow();
 
             expect(operation).toHaveBeenCalledTimes(3);
             expect(onRetry).toHaveBeenCalledTimes(2);
 
-            // Check delays are approximately exponential (with jitter)
+            // Check delays are approximately exponential (with ±10% jitter)
             const firstDelay = onRetry.mock.calls[0][2];
             const secondDelay = onRetry.mock.calls[1][2];
 
-            expect(firstDelay).toBeGreaterThanOrEqual(5); // 10 * 0.5 (min jitter)
-            expect(firstDelay).toBeLessThanOrEqual(10); // 10 * 1.0 (max jitter)
-            expect(secondDelay).toBeGreaterThanOrEqual(10); // 20 * 0.5
-            expect(secondDelay).toBeLessThanOrEqual(20); // 20 * 1.0
-        }, 10000);
+            expect(firstDelay).toBeGreaterThanOrEqual(9); // 10 * 0.9 (min jitter)
+            expect(firstDelay).toBeLessThanOrEqual(11); // 10 * 1.1 (max jitter)
+            expect(secondDelay).toBeGreaterThanOrEqual(18); // 20 * 0.9
+            expect(secondDelay).toBeLessThanOrEqual(22); // 20 * 1.1
+        });
 
         it('should respect max delay', async () => {
             const operation = jest.fn().mockRejectedValue(new Error('Error'));
             const onRetry = jest.fn();
 
-            await expect(retry(operation, {
+            const promise = retry(operation, {
                 maxAttempts: 5,
                 initialDelay: 100,
                 backoffMultiplier: 10,
                 maxDelay: 200,
                 onRetry
-            })).rejects.toThrow();
+            });
+            promise.catch(() => { }); // Prevent unhandled rejection
+            await jest.runAllTimersAsync();
+            await expect(promise).rejects.toThrow();
 
             // All delays should be capped at maxDelay
             onRetry.mock.calls.forEach(call => {
                 const delay = call[2];
                 expect(delay).toBeLessThanOrEqual(200);
             });
-        }, 10000);
+        });
     });
 
     describe('shouldRetry predicate', () => {
@@ -96,7 +115,10 @@ describe('retry', () => {
             const operation = jest.fn().mockRejectedValue(new Error('Error'));
             const shouldRetry = jest.fn((error, attempt) => attempt < 2);
 
-            await expect(retry(operation, { maxAttempts: 5, shouldRetry })).rejects.toThrow();
+            const promise = retry(operation, { maxAttempts: 5, shouldRetry });
+            promise.catch(() => { }); // Prevent unhandled rejection
+            await jest.runAllTimersAsync();
+            await expect(promise).rejects.toThrow();
 
             expect(operation).toHaveBeenCalledTimes(2);
             expect(shouldRetry).toHaveBeenCalledWith(expect.any(Error), 1);
@@ -110,7 +132,9 @@ describe('retry', () => {
 
             const shouldRetry = jest.fn().mockReturnValue(true);
 
-            const result = await retry(operation, { maxAttempts: 5, shouldRetry });
+            const promise = retry(operation, { maxAttempts: 5, shouldRetry });
+            await jest.runAllTimersAsync();
+            const result = await promise;
 
             expect(result).toBe('success');
             expect(operation).toHaveBeenCalledTimes(3);
@@ -127,7 +151,9 @@ describe('retry', () => {
 
             const onRetry = jest.fn();
 
-            await retry(operation, { onRetry });
+            const promise = retry(operation, { onRetry });
+            await jest.runAllTimersAsync();
+            await promise;
 
             expect(onRetry).toHaveBeenCalledTimes(2);
             expect(onRetry).toHaveBeenNthCalledWith(1, expect.any(Error), 1, expect.any(Number));
@@ -139,15 +165,21 @@ describe('retry', () => {
         it('should handle non-Error throws', async () => {
             const operation = jest.fn().mockRejectedValue('string error');
 
-            await expect(retry(operation, { initialDelay: 10 })).rejects.toThrow('string error');
-        }, 10000);
+            const promise = retry(operation, { initialDelay: 10 });
+            promise.catch(() => { }); // Prevent unhandled rejection
+            await jest.runAllTimersAsync();
+            await expect(promise).rejects.toThrow('string error');
+        });
 
         it('should preserve original error', async () => {
             const originalError = new Error('Original error');
             const operation = jest.fn().mockRejectedValue(originalError);
 
             try {
-                await retry(operation);
+                const promise = retry(operation);
+                promise.catch(() => { }); // Prevent unhandled rejection
+                await jest.runAllTimersAsync();
+                await promise;
             } catch (error) {
                 expect(error).toBe(originalError);
             }
@@ -227,14 +259,23 @@ describe('@Retry decorator', () => {
     });
 
     it('should retry failed operations', async () => {
-        const result = await service.unreliableOperation();
+        jest.useFakeTimers();
+        const promise = service.unreliableOperation();
+        await jest.runAllTimersAsync();
+        const result = await promise;
+        jest.useRealTimers();
 
         expect(result).toBe('success after retry');
         expect(service.callCount).toBe(2);
     });
 
     it('should throw after max attempts', async () => {
-        await expect(service.operationWithRetry(true)).rejects.toThrow('Operation failed');
+        jest.useFakeTimers();
+        const promise = service.operationWithRetry(true);
+        promise.catch(() => { }); // Prevent unhandled rejection
+        await jest.runAllTimersAsync();
+        await expect(promise).rejects.toThrow('Operation failed');
+        jest.useRealTimers();
 
         expect(service.callCount).toBe(3);
     });
@@ -247,7 +288,12 @@ describe('@Retry decorator', () => {
     });
 
     it('should log retry attempts', async () => {
-        await expect(service.operationWithRetry(true)).rejects.toThrow();
+        jest.useFakeTimers();
+        const promise = service.operationWithRetry(true);
+        promise.catch(() => { }); // Prevent unhandled rejection
+        await jest.runAllTimersAsync();
+        await expect(promise).rejects.toThrow();
+        jest.useRealTimers();
 
         expect(consoleLogSpy).toHaveBeenCalledWith(
             expect.stringContaining('Retrying operationWithRetry')
@@ -274,6 +320,7 @@ describe('@Retry decorator', () => {
 
 describe('custom retry options', () => {
     it('should use custom shouldRetry with decorator', async () => {
+        jest.useFakeTimers();
         const shouldRetrySpy = jest.fn().mockReturnValue(false);
 
         class TestService {
@@ -285,12 +332,17 @@ describe('custom retry options', () => {
 
         const service = new TestService();
 
-        await expect(service.operation()).rejects.toThrow();
+        const promise = service.operation();
+        promise.catch(() => { }); // Prevent unhandled rejection
+        await jest.runAllTimersAsync();
+        await expect(promise).rejects.toThrow();
+        jest.useRealTimers();
 
         expect(shouldRetrySpy).toHaveBeenCalled();
     });
 
     it('should use custom onRetry with decorator', async () => {
+        jest.useFakeTimers();
         const onRetrySpy = jest.fn();
 
         class TestService {
@@ -307,7 +359,10 @@ describe('custom retry options', () => {
         }
 
         const service = new TestService();
-        await service.operation();
+        const promise = service.operation();
+        await jest.runAllTimersAsync();
+        await promise;
+        jest.useRealTimers();
 
         expect(onRetrySpy).toHaveBeenCalledWith(
             expect.any(Error),

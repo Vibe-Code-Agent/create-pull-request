@@ -252,13 +252,14 @@ describe('BaseAtlassianService', () => {
         });
 
         it('should truncate content longer than max input length', () => {
-            const longContent = 'a'.repeat(150000); // Longer than 100KB limit
+            // Test with varied content to prevent over-compression and verify truncation
+            const segment = 'Test content with spaces and punctuation. ';
+            const longContent = segment.repeat(2500); // ~102KB (42 chars * 2500)
             const result = (service as any).stripHtmlAndCompress(longContent);
 
+            // Should be truncated before or at 100KB limit
             expect(result.length).toBeLessThanOrEqual(100000);
-        });
-
-        it('should truncate content longer than max content length', () => {
+        }); it('should truncate content longer than max content length', () => {
             // Create content longer than MAX_CONFLUENCE_CONTENT_LENGTH (2000)
             const longSentences = Array.from({ length: 100 }, (_, i) =>
                 `This is sentence number ${i + 1} that contains quite a bit of text to make it realistically long.`

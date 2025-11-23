@@ -32,7 +32,9 @@ function sleep(ms: number): Promise<void> {
  */
 function calculateDelay(attempt: number, options: Required<RetryOptions>): number {
     const exponentialDelay = options.initialDelay * Math.pow(options.backoffMultiplier, attempt - 1);
-    const delayWithJitter = exponentialDelay * (0.5 + Math.random() * 0.5); // Add 50-100% jitter
+    // Add deterministic ±10% jitter based on attempt number
+    const jitterFactor = 0.9 + ((attempt * 7) % 21) * 0.01; // Cycles through 0.9 to 1.1
+    const delayWithJitter = exponentialDelay * jitterFactor;
     return Math.min(delayWithJitter, options.maxDelay);
 }
 

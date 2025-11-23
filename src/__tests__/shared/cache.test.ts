@@ -4,7 +4,12 @@ describe('Cache', () => {
     let cache: Cache<string>;
 
     beforeEach(() => {
+        jest.useFakeTimers();
         cache = new Cache<string>({ ttl: 1000, maxSize: 5 });
+    });
+
+    afterEach(() => {
+        jest.useRealTimers();
     });
 
     describe('constructor', () => {
@@ -67,40 +72,40 @@ describe('Cache', () => {
     });
 
     describe('TTL expiration', () => {
-        it('should expire values after TTL', async () => {
+        it('should expire values after TTL', () => {
             cache.set('key1', 'value1', 100);
 
             expect(cache.get('key1')).toBe('value1');
 
-            await new Promise(resolve => setTimeout(resolve, 150));
+            jest.advanceTimersByTime(150);
 
             expect(cache.get('key1')).toBeUndefined();
         });
 
-        it('should not expire values before TTL', async () => {
+        it('should not expire values before TTL', () => {
             cache.set('key1', 'value1', 1000);
 
-            await new Promise(resolve => setTimeout(resolve, 50));
+            jest.advanceTimersByTime(50);
 
             expect(cache.get('key1')).toBe('value1');
         });
 
-        it('should clean up expired entries on get', async () => {
+        it('should clean up expired entries on get', () => {
             cache.set('key1', 'value1', 50);
 
-            await new Promise(resolve => setTimeout(resolve, 100));
+            jest.advanceTimersByTime(100);
 
             cache.get('key1');
 
             expect(cache.size()).toBe(0);
         });
 
-        it('should never expire values with TTL=0', async () => {
+        it('should never expire values with TTL=0', () => {
             cache.set('key1', 'value1', 0);
             cache.set('key2', 'value2', 0);
 
             // Wait longer than normal TTL
-            await new Promise(resolve => setTimeout(resolve, 200));
+            jest.advanceTimersByTime(200);
 
             // Values with TTL=0 should never expire
             expect(cache.get('key1')).toBe('value1');
@@ -108,11 +113,11 @@ describe('Cache', () => {
             expect(cache.size()).toBe(2);
         });
 
-        it('should not cleanup entries with TTL=0', async () => {
+        it('should not cleanup entries with TTL=0', () => {
             cache.set('key1', 'value1', 0);
             cache.set('key2', 'value2', 50);
 
-            await new Promise(resolve => setTimeout(resolve, 100));
+            jest.advanceTimersByTime(100);
 
             const removed = cache.cleanup();
 
@@ -156,10 +161,10 @@ describe('Cache', () => {
             expect(cache.has('nonexistent')).toBe(false);
         });
 
-        it('should return false for expired keys', async () => {
+        it('should return false for expired keys', () => {
             cache.set('key1', 'value1', 50);
 
-            await new Promise(resolve => setTimeout(resolve, 100));
+            jest.advanceTimersByTime(100);
 
             expect(cache.has('key1')).toBe(false);
         });
@@ -225,10 +230,10 @@ describe('Cache', () => {
             expect(stats.entries[1].ttl).toBe(2000);
         });
 
-        it('should include age information', async () => {
+        it('should include age information', () => {
             cache.set('key1', 'value1');
 
-            await new Promise(resolve => setTimeout(resolve, 100));
+            jest.advanceTimersByTime(100);
 
             const stats = cache.getStats();
 
@@ -237,11 +242,11 @@ describe('Cache', () => {
     });
 
     describe('cleanup', () => {
-        it('should remove expired entries', async () => {
+        it('should remove expired entries', () => {
             cache.set('key1', 'value1', 50);
             cache.set('key2', 'value2', 1000);
 
-            await new Promise(resolve => setTimeout(resolve, 100));
+            jest.advanceTimersByTime(100);
 
             const removed = cache.cleanup();
 
@@ -280,8 +285,13 @@ describe('CacheManager', () => {
     let manager: CacheManager;
 
     beforeEach(() => {
+        jest.useFakeTimers();
         manager = CacheManager.getInstance();
         manager.clearAll();
+    });
+
+    afterEach(() => {
+        jest.useRealTimers();
     });
 
     describe('getInstance', () => {
@@ -349,7 +359,7 @@ describe('CacheManager', () => {
     });
 
     describe('cleanupAll', () => {
-        it('should cleanup all managed caches', async () => {
+        it('should cleanup all managed caches', () => {
             // Create fresh caches
             (manager as any).caches.clear();
             const cache1 = manager.getCache('cleanup1', { ttl: 50 });
@@ -358,7 +368,7 @@ describe('CacheManager', () => {
             cache1.set('key1', 'value1');
             cache2.set('key2', 'value2');
 
-            await new Promise(resolve => setTimeout(resolve, 100));
+            jest.advanceTimersByTime(100);
 
             const removed = manager.cleanupAll();
 
@@ -411,8 +421,13 @@ describe('@Cached decorator', () => {
     let service: ReturnType<typeof createService>;
 
     beforeEach(() => {
+        jest.useFakeTimers();
         CacheManager.getInstance().clearAll();
         service = createService();
+    });
+
+    afterEach(() => {
+        jest.useRealTimers();
     });
 
     it('should cache method results', async () => {
@@ -442,10 +457,10 @@ describe('@Cached decorator', () => {
         await service.expensiveOperation('test');
         expect(service.callCount).toBe(1);
 
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        jest.advanceTimersByTime(1500);
 
         await service.expensiveOperation('test');
 
         expect(service.callCount).toBe(2);
-    }, 3000);
+    });
 });
