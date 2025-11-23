@@ -6,7 +6,7 @@ if (nodeVersion >= 25) {
   const os = require('os');
   const path = require('path');
   const fs = require('fs');
-  
+
   // Only set if not already configured to avoid worker process issues
   if (!process.env.NODE_OPTIONS || !process.env.NODE_OPTIONS.includes('--localstorage-file')) {
     // Create a stable temp directory for Jest
@@ -14,7 +14,7 @@ if (nodeVersion >= 25) {
     if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(tempDir, { recursive: true });
     }
-    
+
     const tempFile = path.join(tempDir, `storage-${process.pid}`);
     process.env.NODE_OPTIONS = (process.env.NODE_OPTIONS || '') + ` --localstorage-file=${tempFile}`;
   }
