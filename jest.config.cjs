@@ -1,8 +1,19 @@
 // Set NODE_OPTIONS environment variable to work around Node.js 25+ security restrictions
-const os = require('os');
-const path = require('path');
-const tempFile = path.join(os.tmpdir(), 'jest-localstorage-' + Date.now());
-process.env.NODE_OPTIONS = (process.env.NODE_OPTIONS || '') + ` --localstorage-file=${tempFile}`;
+// Only set if not already set (to avoid worker process issues)
+if (!process.env.NODE_OPTIONS || !process.env.NODE_OPTIONS.includes('--localstorage-file')) {
+  const os = require('os');
+  const path = require('path');
+  const fs = require('fs');
+  
+  // Create a stable temp directory for Jest
+  const tempDir = path.join(os.tmpdir(), 'jest-localstorage');
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+  }
+  
+  const tempFile = path.join(tempDir, `storage-${process.pid}`);
+  process.env.NODE_OPTIONS = (process.env.NODE_OPTIONS || '') + ` --localstorage-file=${tempFile}`;
+}
 
 module.exports = {
   preset: 'ts-jest/presets/default-esm',
