@@ -46,7 +46,7 @@ describe('CopilotProvider', () => {
 
     it('should use default model when not provided', () => {
       const defaultProvider = new CopilotProvider('test-key');
-      expect(defaultProvider['model']).toBe('copilot-chat');
+      expect(defaultProvider['model']).toBe('gpt-4o');
     });
 
     it('should create axios client with correct headers', () => {
@@ -54,10 +54,7 @@ describe('CopilotProvider', () => {
         timeout: 3000000,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer test-api-key',
-          'Accept': 'application/vnd.github+json',
-          'X-GitHub-Api-Version': '2023-07-07',
-          'User-Agent': 'create-pr-cli'
+          'Authorization': 'Bearer test-api-key'
         }
       });
     });
@@ -65,7 +62,7 @@ describe('CopilotProvider', () => {
 
   describe('getDefaultModel', () => {
     it('should return default Copilot model', () => {
-      expect(provider.getDefaultModel()).toBe('copilot-chat');
+      expect(provider.getDefaultModel()).toBe('gpt-4o');
     });
   });
 
@@ -74,16 +71,14 @@ describe('CopilotProvider', () => {
       const headers = provider.getHeaders();
       expect(headers).toEqual({
         'Authorization': 'Bearer test-api-key',
-        'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2023-07-07',
-        'User-Agent': 'create-pr-cli'
+        'Content-Type': 'application/json'
       });
     });
   });
 
   describe('getApiUrl', () => {
     it('should return Copilot API URL', () => {
-      expect(provider.getApiUrl()).toBe('https://api.github.com/copilot_internal/v2/completions');
+      expect(provider.getApiUrl()).toBe('https://models.inference.ai.azure.com/chat/completions');
     });
   });
 
@@ -175,7 +170,7 @@ describe('CopilotProvider', () => {
       });
 
       expect(mockAxiosInstance.post).toHaveBeenCalledWith(
-        'https://api.github.com/copilot_internal/v2/completions',
+        'https://models.inference.ai.azure.com/chat/completions',
         {
           model: 'copilot-chat',
           messages: [

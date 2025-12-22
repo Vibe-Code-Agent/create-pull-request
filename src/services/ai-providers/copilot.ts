@@ -1,5 +1,5 @@
 import { BaseAIProvider } from './base.js';
-import { AI_PROVIDERS, LIMITS } from '../../constants/index.js';
+import { AI_PROVIDERS, LIMITS, API_URLS } from '../../constants/index.js';
 
 export class CopilotProvider extends BaseAIProvider {
   constructor(apiKey: string, model?: string) {
@@ -7,20 +7,18 @@ export class CopilotProvider extends BaseAIProvider {
   }
 
   getDefaultModel(): string {
-    return 'copilot-chat';
+    return 'gpt-4o';
   }
 
   getHeaders(): Record<string, string> {
     return {
       'Authorization': `Bearer ${this.apiKey}`,
-      'Accept': 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2023-07-07',
-      'User-Agent': 'create-pr-cli'
+      'Content-Type': 'application/json'
     };
   }
 
   getApiUrl(): string {
-    return 'https://api.github.com/copilot_internal/v2/completions';
+    return `${API_URLS.COPILOT_BASE_URL}/chat/completions`;
   }
 
   buildRequestBody(prompt: string): any {

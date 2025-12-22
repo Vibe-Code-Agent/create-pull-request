@@ -97,9 +97,11 @@ This will guide you through setting up all required credentials and AI providers
 - Create a new API key
 - Copy the key to your configuration
 
-**GitHub Copilot API Token (Legacy):**
-- Uses the same token as GitHub API
-- Or get a separate Copilot API token if available
+**GitHub Models API Token (Legacy):**
+- Go to [GitHub Settings > Personal access tokens](https://github.com/settings/tokens)
+- Generate a new token with `model:read` scope (or use your existing GitHub token)
+- This uses Azure AI infrastructure to access models like GPT-4o
+- Copy the token to your configuration
 
 ## Usage
 
