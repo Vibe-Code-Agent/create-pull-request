@@ -15,7 +15,8 @@ if (nodeVersion >= 25) {
       fs.mkdirSync(tempDir, { recursive: true });
     }
 
-    const tempFile = path.join(tempDir, `storage-${process.pid}`);
+    // Use a unique file per worker to avoid database lock issues
+    const tempFile = path.join(tempDir, `storage-${process.pid}-${Date.now()}`);
     process.env.NODE_OPTIONS = (process.env.NODE_OPTIONS || '') + ` --localstorage-file=${tempFile}`;
   }
 }
@@ -23,6 +24,8 @@ if (nodeVersion >= 25) {
 module.exports = {
   preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
+  // Run tests serially to avoid localstorage conflicts
+  maxWorkers: 1,
   roots: ['<rootDir>/src'],
   testMatch: [
     '**/__tests__/**/*.ts',
@@ -40,7 +43,7 @@ module.exports = {
   extensionsToTreatAsEsm: ['.ts'],
   // Transform ES modules from node_modules - be more permissive
   transformIgnorePatterns: [
-    'node_modules/(?!(chalk|inquirer|ora|ansi-styles|strip-ansi|wrap-ansi|string-width|emoji-regex|is-fullwidth-code-point|ansi-regex|supports-color|has-flag|cli-cursor|restore-cursor|cli-spinners|is-interactive|figures|wcwidth|mute-stream|run-async|rxjs|through|base64-js|chardet|tmp|iconv-lite|safer-buffer|external-editor|@octokit|simple-git)/)'
+    'node_modules/(?!(chalk|inquirer|@inquirer|ora|ansi-styles|strip-ansi|wrap-ansi|string-width|emoji-regex|is-fullwidth-code-point|ansi-regex|supports-color|has-flag|cli-cursor|restore-cursor|cli-spinners|is-interactive|figures|wcwidth|mute-stream|run-async|rxjs|through|base64-js|chardet|tmp|iconv-lite|safer-buffer|external-editor|@octokit|simple-git|get-east-asian-width)/)'
   ],
   // Module name mapping for ES modules
   moduleNameMapper: {
