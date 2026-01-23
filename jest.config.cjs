@@ -40,7 +40,7 @@ module.exports = {
   extensionsToTreatAsEsm: ['.ts'],
   // Transform ES modules from node_modules - be more permissive
   transformIgnorePatterns: [
-    'node_modules/(?!(chalk|inquirer|ora|ansi-styles|strip-ansi|wrap-ansi|string-width|emoji-regex|is-fullwidth-code-point|ansi-regex|supports-color|has-flag|cli-cursor|restore-cursor|cli-spinners|is-interactive|figures|wcwidth|mute-stream|run-async|rxjs|through|base64-js|chardet|tmp|iconv-lite|safer-buffer|external-editor|@octokit|simple-git)/)'
+    'node_modules/(?!(chalk|inquirer|@inquirer|ora|ansi-styles|strip-ansi|wrap-ansi|string-width|emoji-regex|is-fullwidth-code-point|ansi-regex|supports-color|has-flag|cli-cursor|restore-cursor|cli-spinners|is-interactive|figures|wcwidth|mute-stream|run-async|rxjs|through|base64-js|chardet|tmp|iconv-lite|safer-buffer|external-editor|@octokit|simple-git)/)'
   ],
   // Module name mapping for ES modules
   moduleNameMapper: {
