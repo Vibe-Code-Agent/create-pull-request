@@ -14,7 +14,12 @@ jobs:
     if: github.actor == 'dependabot[bot]'
 
     steps:
-      - name: 🔍 Get PR information
+      - name: � Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: �🔍 Get PR information
         id: pr-info
         run: |
           PR_NUMBER="${{ github.event.pull_request.number }}"
@@ -80,6 +85,7 @@ jobs:
           echo "⏳ GitHub will automatically merge it once all required checks pass"
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_REPO: ${{ github.repository }}
 
       - name: 📝 Add status comment
         if: success()
@@ -109,6 +115,7 @@ jobs:
           echo "✅ Status comment added"
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_REPO: ${{ github.repository }}
 
       - name: ⚠️ Handle failure
         if: failure()
@@ -132,3 +139,4 @@ jobs:
           gh pr comment "$PR_NUMBER" --body "$COMMENT" || echo "Failed to add error comment"
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_REPO: ${{ github.repository }}
